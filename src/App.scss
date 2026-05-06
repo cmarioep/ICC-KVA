@@ -1,0 +1,862 @@
+// ── Variables ──────────────────────────────────────────────────────────────────
+$font-mono: 'Courier New', monospace;
+$bg-page: #f0f4f8;
+$bg-white: #ffffff;
+$bg-surface: #f8fafc;
+
+$c-blue: #2563eb;
+$c-blue-dark: #1d4ed8;
+$c-blue-light: #eff6ff;
+$c-blue-border: #bfdbfe;
+$c-green: #16a34a;
+$c-green-light: #f0fdf4;
+$c-green-border: #bbf7d0;
+$c-amber: #d97706;
+$c-amber-bg: #fffbeb;
+$c-amber-border: #fde68a;
+$c-red: #dc2626;
+$c-red-border: #fecaca;
+$c-dark: #0f172a;
+$c-slate: #1e293b;
+$c-slate-mid: #475569;
+$c-slate-light: #64748b;
+$c-slate-lighter: #94a3b8;
+$c-border: #e2e8f0;
+$c-border-light: #f1f5f9;
+$c-border-input: #cbd5e1;
+
+// ── Shared form controls ──────────────────────────────────────────────────────
+
+.inp,
+.sel {
+  background: $bg-white;
+  border: 1px solid $c-border-input;
+  border-radius: 6px;
+  color: $c-dark;
+  font-size: 13px;
+  padding: 7px 10px;
+  width: 100%;
+  outline: none;
+  font-family: $font-mono;
+  box-sizing: border-box;
+  display: block;
+}
+
+.fld {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &__label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: $c-slate-light;
+  }
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+
+.card {
+  background: $bg-white;
+  border: 1px solid $c-border;
+  border-radius: 12px;
+  padding: 20px 22px;
+}
+
+// ── Section heading ───────────────────────────────────────────────────────────
+
+.sec-head {
+  margin-bottom: 18px;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 3px;
+  }
+
+  &__num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: $c-blue-light;
+    border: 2px solid $c-blue;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: $c-blue;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: $c-dark;
+  }
+
+  &__sub {
+    margin: 0 0 0 36px;
+    font-size: 11px;
+    color: $c-slate-light;
+    line-height: 1.5;
+  }
+}
+
+// ── Cable form ────────────────────────────────────────────────────────────────
+
+.cable-frm {
+  max-width: 600px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: $bg-surface;
+  border-radius: 8px;
+  border: 1px solid $c-border;
+
+  &__toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: $c-slate-light;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      accent-color: $c-blue;
+    }
+
+    &--open {
+      margin-bottom: 10px;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 90px;
+    gap: 8px;
+    margin-bottom: 6px;
+
+    &--acsr {
+      grid-template-columns: 1fr 1fr 90px;
+    }
+  }
+
+  &__info {
+    font-size: 10px;
+    color: $c-slate-light;
+    font-family: monospace;
+    padding: 4px 0;
+
+    strong {
+      color: $c-amber;
+    }
+  }
+}
+
+// ── Resumen de Parámetros ─────────────────────────────────────────────────────
+
+.sec-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: $c-blue-dark;
+  background: $c-blue-light;
+  padding: 7px 12px;
+  margin-bottom: 0;
+  margin-top: 20px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid $c-blue-border;
+}
+
+.resumen-table {
+  overflow-x: auto;
+  background: $bg-white;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid $c-border;
+  border-top: none;
+  margin-bottom: 0;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+}
+
+.rp {
+  background: $bg-white;
+  border: 1px solid $c-border;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 18px;
+
+  &__header {
+    background: $bg-surface;
+    padding: 12px 16px;
+    border-bottom: 1px solid $c-border;
+    text-align: center;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 700;
+    color: $c-dark;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  &__body {
+    padding: 16px;
+  }
+}
+
+.rp-th {
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: $c-border-light;
+  color: $c-slate-mid;
+  text-align: left;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid $c-border;
+  white-space: nowrap;
+}
+
+.rp-td {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: $c-slate;
+  border-bottom: 1px solid $c-border-light;
+  font-family: $font-mono;
+  font-weight: 400;
+  white-space: nowrap;
+
+  &--bold {
+    font-weight: 700;
+  }
+
+  &--slate {
+    color: $c-slate-mid;
+  }
+
+  &--blue {
+    color: $c-blue;
+  }
+
+  &--amber {
+    color: $c-amber;
+  }
+
+  &--green {
+    color: $c-green;
+  }
+
+  &--light {
+    color: $c-border-input;
+  }
+}
+
+.rp-tr--odd {
+  background: $bg-surface;
+}
+
+// ── App layout ────────────────────────────────────────────────────────────────
+
+.app {
+  background: $bg-page;
+  min-height: 100vh;
+  font-family: $font-mono;
+  color: $c-dark;
+  padding-bottom: 48px;
+}
+
+// ── Topbar (form) ─────────────────────────────────────────────────────────────
+
+.topbar {
+  background: $bg-white;
+  border-bottom: 1px solid $c-border;
+  padding: 16px 28px;
+  margin-bottom: 28px;
+
+  &__title {
+    font-size: 18px;
+    font-weight: 700;
+    color: $c-dark;
+    letter-spacing: 0.04em;
+  }
+
+  &__sub {
+    font-size: 11px;
+    color: $c-slate-light;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+}
+
+// ── Form content ──────────────────────────────────────────────────────────────
+
+.form-content {
+  width: 30vw;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.grid-params {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.grid-tip {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: $c-amber-bg;
+  border-radius: 6px;
+  font-size: 11px;
+  color: $c-slate-light;
+  line-height: 1.6;
+  border: 1px solid $c-amber-border;
+
+  strong {
+    color: $c-amber;
+  }
+}
+
+// ── Section header row ────────────────────────────────────────────────────────
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+// ── Add buttons ───────────────────────────────────────────────────────────────
+
+.btn-add {
+  padding: 7px 14px;
+  background: $c-blue-light;
+  border: 1px solid $c-blue;
+  border-radius: 7px;
+  color: $c-blue;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  margin-top: 4px;
+
+  &--green {
+    background: $c-green-light;
+    border-color: $c-green;
+    color: $c-green;
+  }
+}
+
+// ── Sources list ──────────────────────────────────────────────────────────────
+
+.sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.src-card {
+  background: $bg-surface;
+  border-radius: 10px;
+  padding: 16px 18px;
+  border: 1px solid $c-blue-border;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  &__header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__header-right {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+}
+
+.src-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.07em;
+
+  &--trafo {
+    background: $c-blue-light;
+    color: $c-blue;
+    border: 1px solid $c-blue-border;
+  }
+
+  &--gen {
+    background: $c-green-light;
+    color: $c-green;
+    border: 1px solid $c-green-border;
+  }
+}
+
+.label-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid $c-border-input;
+  color: $c-dark;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 2px 4px;
+  outline: none;
+  width: 110px;
+}
+
+.radio-label {
+  font-size: 11px;
+  color: $c-slate-light;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+
+  input[type="radio"] {
+    accent-color: $c-blue;
+  }
+}
+
+.btn-remove {
+  background: none;
+  border: 1px solid $c-red-border;
+  border-radius: 5px;
+  color: $c-red;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.src-params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.src-cables-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.cable-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: $c-slate-light;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+
+// ── Loads grid ────────────────────────────────────────────────────────────────
+
+.loads-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+
+}
+
+.load-card {
+  max-width: 600px;
+  background: $bg-surface;
+  border-radius: 10px;
+  padding: 14px 16px;
+  border: 1px solid $c-green-border;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  &__header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.load-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: $c-green-light;
+  border: 1.5px solid $c-green;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: $c-green;
+  flex-shrink: 0;
+}
+
+.load-label-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid $c-border-input;
+  color: $c-dark;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 2px 4px;
+  outline: none;
+  width: 100px;
+}
+
+.btn-remove-x {
+  background: none;
+  border: none;
+  color: $c-slate-lighter;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.load-params-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.xdpp-display {
+  padding-top: 6px;
+
+  &__label {
+    font-size: 10px;
+    color: $c-slate-light;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 5px;
+  }
+
+  &__value {
+    font-size: 16px;
+    color: $c-amber;
+    font-weight: 700;
+  }
+
+  &__hint {
+    font-size: 9px;
+    color: $c-slate-lighter;
+  }
+}
+
+.btn-calc {
+  width: 100%;
+  padding: 15px;
+  background: $c-blue;
+  border: none;
+  border-radius: 10px;
+  color: $bg-white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+// ── Results topbar ────────────────────────────────────────────────────────────
+
+.res-topbar {
+  background: $bg-white;
+  border-bottom: 1px solid $c-border;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  &__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: $c-dark;
+  }
+
+  &__sub {
+    font-size: 11px;
+    color: $c-slate-light;
+  }
+}
+
+.btn-back {
+  padding: 7px 16px;
+  background: transparent;
+  border: 1px solid $c-border-input;
+  border-radius: 7px;
+  color: $c-slate-light;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+// ── KPI strip ─────────────────────────────────────────────────────────────────
+
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid $c-border;
+  background: $bg-white;
+}
+
+.kpi-item {
+  padding: 14px 20px;
+  border-right: 1px solid $c-border;
+
+  &--amber {
+    border-bottom: 3px solid $c-amber;
+  }
+
+  &--blue {
+    border-bottom: 3px solid $c-blue;
+  }
+
+  &--red {
+    border-bottom: 3px solid $c-red;
+  }
+
+  &--green {
+    border-bottom: 3px solid $c-green;
+  }
+
+  &__label {
+    font-size: 10px;
+    color: $c-slate-lighter;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 4px;
+  }
+
+  &__value {
+    font-size: 20px;
+    font-weight: 700;
+
+    &--amber {
+      color: $c-amber;
+    }
+
+    &--blue {
+      color: $c-blue;
+    }
+
+    &--red {
+      color: $c-red;
+    }
+
+    &--green {
+      color: $c-green;
+    }
+  }
+
+  &__sub {
+    font-size: 10px;
+    color: $c-slate-lighter;
+    margin-top: 2px;
+  }
+}
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+
+.canvas-wrap {
+  background: $bg-white;
+  padding: 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid $c-border;
+
+  canvas {
+    display: block;
+    border-radius: 8px;
+    max-width: 100%;
+  }
+}
+
+// ── Results tables ────────────────────────────────────────────────────────────
+
+.tables-content {
+  max-width: 1240px;
+  margin: 24px auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.card-section-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: $c-slate-light;
+  margin-bottom: 14px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.table-overflow {
+  overflow-x: auto;
+}
+
+.res-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.res-th {
+  padding: 8px 10px;
+  text-align: left;
+  color: $c-slate-mid;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid $c-border;
+  background: $c-border-light;
+}
+
+.res-td {
+  padding: 7px 10px;
+  color: $c-slate-light;
+  font-size: 12px;
+  border-bottom: 1px solid $c-border-light;
+
+  &--blue {
+    color: $c-blue;
+  }
+
+  &--amber {
+    color: $c-amber;
+  }
+
+  &--green {
+    color: $c-green;
+  }
+
+  &--dark {
+    color: $c-slate;
+  }
+
+  &--light {
+    color: $c-border-input;
+  }
+
+  &--bold {
+    font-weight: 700;
+  }
+
+  &--mono {
+    font-family: monospace;
+  }
+
+  &--lg {
+    font-size: 14px;
+  }
+}
+
+.res-tr--striped {
+  background: $bg-surface;
+}
+
+.res-tr--total-blue {
+  background: $c-blue-light;
+  border-top: 2px solid $c-blue-border;
+}
+
+.res-tr--total-green {
+  background: $c-green-light;
+  border-top: 2px solid $c-green-border;
+}
+
+// ── Summary grid ──────────────────────────────────────────────────────────────
+
+.summary-grid {
+  background: $bg-white;
+  border: 1px solid $c-border;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.summary-section__title {
+  font-size: 11px;
+  color: $c-slate-light;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 12px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid $c-border-light;
+  font-size: 12px;
+
+  &__label {
+    color: $c-slate-light;
+  }
+
+  &__value {
+    font-weight: 700;
+    font-family: monospace;
+
+    &--blue {
+      color: $c-blue;
+    }
+
+    &--green {
+      color: $c-green;
+    }
+
+    &--amber {
+      color: $c-amber;
+    }
+
+    &--red {
+      color: $c-red;
+    }
+  }
+}
+
+.formula-box {
+  margin-top: 14px;
+  font-size: 10px;
+  color: $c-slate-light;
+  padding: 8px 10px;
+  background: $bg-surface;
+  border-radius: 6px;
+  line-height: 1.7;
+  border: 1px solid $c-border;
+}
