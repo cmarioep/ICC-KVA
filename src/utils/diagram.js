@@ -1,3 +1,5 @@
+import { series } from "./cableUtils";
+
 export function drawDiagram(canvas, data, res) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -80,6 +82,17 @@ export function drawDiagram(canvas, data, res) {
     const cx = CX + si * 380;
     const infoX = cx + 44;
 
+    // Downstream motor contribution reflected backwards through each network element.
+    // These are the "below" values shown in each upstream flow pair.
+    const dsc_at_bus = res.downstreamKVAcc;
+    const dsc_below_trafo = src.outCableKVAcc != null
+      ? series(dsc_at_bus, src.outCableKVAcc)
+      : dsc_at_bus;
+    const dsc_below_incable = series(dsc_below_trafo, src.srcKVAcc);
+    const dsc_at_grid = src.inCableKVAcc != null
+      ? series(dsc_below_incable, src.inCableKVAcc)
+      : dsc_below_incable;
+
     triangle(cx, y);
     tx(`Un: ${data.grid.kV} kV`, infoX, y + 6, 11, "#222");
     tx(`Icc: ${data.grid.Icc.toFixed(1)} kA`, infoX, y + 20, 11, "#222");
@@ -88,7 +101,8 @@ export function drawDiagram(canvas, data, res) {
     vl(cx, y, y + 14);
     y += 14;
 
-    flowPair(cx, y + 10, gridKVAcc, src.inCableKVAcc ?? src.kVAcc_through);
+    // above = upstream kVAcc from grid; below = motor contribution seen from here
+    flowPair(cx, y + 10, gridKVAcc, dsc_at_grid);
     y += 24;
     vl(cx, y, y + 10);
     y += 10;
@@ -99,7 +113,8 @@ export function drawDiagram(canvas, data, res) {
       y += 18;
       vl(cx, y, y + 10);
       y += 10;
-      flowPair(cx, y + 10, src.inKVAcc, src.kVAcc_through);
+      // above = upstream after inCable; below = motor contribution reflected through trafo+outCable
+      flowPair(cx, y + 10, src.inKVAcc, dsc_below_incable);
       y += 24;
       vl(cx, y, y + 10);
       y += 10;
@@ -122,7 +137,8 @@ export function drawDiagram(canvas, data, res) {
     }
     y += symH + 6;
 
-    flowPair(cx, y + 10, src.kVAcc_through, src.outCableKVAcc ?? src.outKVAcc);
+    // above = upstream through trafo; below = motor contribution reflected through outCable
+    flowPair(cx, y + 10, src.kVAcc_through, dsc_below_trafo);
     y += 24;
     vl(cx, y, y + 10);
     y += 10;
@@ -133,7 +149,8 @@ export function drawDiagram(canvas, data, res) {
       y += 18;
       vl(cx, y, y + 10);
       y += 10;
-      flowPair(cx, y + 10, src.kVAcc_through, src.outKVAcc);
+      // above = upstream kVAcc arriving at bus; below = motor contribution at bus
+      flowPair(cx, y + 10, src.outKVAcc, dsc_at_bus);
       y += 24;
       vl(cx, y, y + 10);
       y += 10;
@@ -142,7 +159,7 @@ export function drawDiagram(canvas, data, res) {
     const busY = y + 10;
     busBar(cx - BUS_HALF, cx + BUS_HALF, busY);
     const Icc_bus = busKVAcc / (Math.sqrt(3) * kVbus);
-    tx(`Icc: ${Icc_bus.toFixed(5)}`, cx + BUS_HALF + 10, busY + 4, 11, "#c00");
+    tx(`Icc: ${Icc_bus.toFixed(4)}`, cx + BUS_HALF + 10, busY + 4, 11, "#c00");
     y = busY;
 
     const ldStartX = cx - ((NL - 1) * LD_SP) / 2;
@@ -151,19 +168,25 @@ export function drawDiagram(canvas, data, res) {
       if (lx !== cx) hl(lx, cx, busY, 1.5);
 
       let ly = busY + 5;
+      // busAbove = upstream kVAcc at bus excluding this motor's contribution
       const busAbove = busKVAcc - ld.tobus;
+      // above = upstream at bus; below = this motor's contribution to bus (through its cable)
       flowPair(lx, ly + 10, busAbove, ld.tobus, lx + 80);
       ly += 24;
       vl(lx, ly, ly + 10);
       ly += 10;
 
+      // upstream kVAcc seen at motor terminals (through cable from bus)
+      let upstream_at_terminal = busAbove;
       if (ld.cable?.enabled && ld.cableKVAcc) {
         impBox(lx, ly, ld.cableKVAcc.toFixed(2));
         vl(lx, ly - 11, ly + 11);
         ly += 18;
         vl(lx, ly, ly + 10);
         ly += 10;
-        flowPair(lx, ly + 10, ld.tobus, ld.motorKVAcc, lx + 80);
+        upstream_at_terminal = series(busAbove, ld.cableKVAcc);
+        // above = upstream kVAcc at motor terminals; below = motor's own kVAcc
+        flowPair(lx, ly + 10, upstream_at_terminal, ld.motorKVAcc, lx + 80);
         ly += 24;
         vl(lx, ly, ly + 10);
         ly += 10;
@@ -171,7 +194,8 @@ export function drawDiagram(canvas, data, res) {
 
       motor(lx, ly + 24, "");
       tx(ld.label, lx, ly + 58, 10, "#111", "center", true);
-      const Icc_m = ld.tobus / (Math.sqrt(3) * kVbus);
+      // Total kVAcc at motor terminals = upstream through cable + motor self-contribution
+      const Icc_m = (upstream_at_terminal + ld.motorKVAcc) / (Math.sqrt(3) * kVbus);
       const Iasc_m = Icc_m * factor;
       tx(`Icc: ${Icc_m.toFixed(2)}`, lx + 34, ly + 20, 11, "#333");
       tx(`Iasc: ${Iasc_m.toFixed(2)}`, lx + 34, ly + 34, 11, "#333");
