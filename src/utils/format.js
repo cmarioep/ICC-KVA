@@ -1,1 +1,2 @@
-export const f = (n, d = 2) => isFinite(n) && n != null ? n.toFixed(d) : "∞";
+export const formatNumber = (number, decimals = 2) =>
+  isFinite(number) && number != null ? number.toFixed(decimals) : "∞";
