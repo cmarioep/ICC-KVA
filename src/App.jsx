@@ -146,7 +146,7 @@ function ParameterSummary({ data, result }) {
           </tbody>
         </SummaryTable>
 
-        {firstSource?.inCable?.enabled && (
+        {firstSource?.type === "transformer" && firstSource?.inCable?.enabled && (
           <>
             <SectionTitle>Acometida de Media Tensión</SectionTitle>
             <SummaryTable>
@@ -168,10 +168,10 @@ function ParameterSummary({ data, result }) {
           </>
         )}
 
-        <SectionTitle>Transformador</SectionTitle>
+        <SectionTitle>Fuentes de Alimentación</SectionTitle>
         <SummaryTable>
           <thead><tr>
-            {["Descrip.", "kVA", "Un (kV)", "Z%", "kVAeq"].map(header =>
+            {["Descrip.", "kVA", "Un (kV)", "Z% / X''d", "kVAeq"].map(header =>
               <th key={header} className="rp-th">{header}</th>)}
           </tr></thead>
           <tbody>
@@ -314,7 +314,13 @@ export default function App() {
                     {["transformer", "generator"].map(sourceType => (
                       <label key={sourceType} className="radio-label">
                         <input type="radio" name={`tp-${source.id}`} value={sourceType} checked={source.type === sourceType}
-                          onChange={() => updateField(`sources.${sourceIndex}.type`, sourceType)} />
+                          onChange={() => {
+                            updateField(`sources.${sourceIndex}.type`, sourceType);
+                            if (sourceType === "generator" && source.label.startsWith("Trafo"))
+                              updateField(`sources.${sourceIndex}.label`, `GEN ${source.id}`);
+                            if (sourceType === "transformer" && source.label.startsWith("GEN"))
+                              updateField(`sources.${sourceIndex}.label`, `Trafo ${source.id}`);
+                          }} />
                         {sourceType === "transformer" ? "Trafo" : "Generador"}
                       </label>
                     ))}
@@ -325,18 +331,21 @@ export default function App() {
                 </div>
                 <div className="src-params-grid">
                   <FormField label="Potencia (kVA)"><FormInput value={source.kVA} onChange={v => updateField(`sources.${sourceIndex}.kVA`, v)} min={1} step={25} /></FormField>
-                  <FormField label={source.type === "transformer" ? "%Z impedancia" : "X''d (p.u.)"}>
-                    <FormInput value={source.type === "transformer" ? source.zPct : source.xdpp}
-                      onChange={v => updateField(`sources.${sourceIndex}.${source.type === "transformer" ? "zPct" : "xdpp"}`, v)} min={0.01} step={0.01} />
-                  </FormField>
-                  <FormField label="Tensión primaria (kV)">  <FormInput value={source.kVpri} onChange={v => updateField(`sources.${sourceIndex}.kVpri`, v)} min={0.1}   step={0.1}   /></FormField>
+                  {source.type === "transformer" && <>
+                    <FormField label="%Z impedancia">
+                      <FormInput value={source.zPct} onChange={v => updateField(`sources.${sourceIndex}.zPct`, v)} min={0.01} step={0.01} />
+                    </FormField>
+                    <FormField label="Tensión primaria (kV)"><FormInput value={source.kVpri} onChange={v => updateField(`sources.${sourceIndex}.kVpri`, v)} min={0.1} step={0.1} /></FormField>
+                  </>}
                   <FormField label="Tensión secundaria (kV)"><FormInput value={source.kVsec} onChange={v => updateField(`sources.${sourceIndex}.kVsec`, v)} min={0.001} step={0.001} /></FormField>
                 </div>
                 <div className="src-cables-grid">
-                  <div>
-                    <div className="cable-section-label">Cable de entrada (MT → fuente)</div>
-                    <CableForm cable={source.inCable}  onChange={c => updateField(`sources.${sourceIndex}.inCable`,  c)} />
-                  </div>
+                  {source.type === "transformer" && (
+                    <div>
+                      <div className="cable-section-label">Cable de entrada (MT → fuente)</div>
+                      <CableForm cable={source.inCable} onChange={c => updateField(`sources.${sourceIndex}.inCable`, c)} />
+                    </div>
+                  )}
                   <div>
                     <div className="cable-section-label">Cable de salida (fuente → barra BT)</div>
                     <CableForm cable={source.outCable} onChange={c => updateField(`sources.${sourceIndex}.outCable`, c)} />

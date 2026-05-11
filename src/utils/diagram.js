@@ -9,7 +9,7 @@ export function drawDiagram(canvas, data, results) {
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   ctx.setLineDash([]);
 
-  const { srcResults, loadResults, busKVAcc, gridKVAcc } = results;
+  const { srcResults, loadResults, busKVAcc, gridKVAcc, upstreamKVAcc } = results;
   const busVoltageKV = srcResults[0]?.kVsec ?? 0.208;
   const asymmetricFactor = busVoltageKV < 0.6 ? 1.25 : 1.6;
 
@@ -25,8 +25,7 @@ export function drawDiagram(canvas, data, results) {
     ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
     ctx.stroke();
   }
-  const drawVerticalLine   = (x, y1, y2, lw = DEFAULT_LINE_WIDTH, color = MAIN_LINE_COLOR) => drawLine(x, y1, x, y2, lw, color);
-  const drawHorizontalLine = (x1, x2, y, lw = DEFAULT_LINE_WIDTH, color = MAIN_LINE_COLOR) => drawLine(x1, y, x2, y, lw, color);
+  const drawVerticalLine = (x, y1, y2, lw = DEFAULT_LINE_WIDTH, color = MAIN_LINE_COLOR) => drawLine(x, y1, x, y2, lw, color);
 
   function drawText(text, x, y, fontSize = 11, color = "#222", textAlign = "left", isBold = false) {
     ctx.setLineDash([]);
@@ -63,6 +62,20 @@ export function drawDiagram(canvas, data, results) {
     ctx.closePath(); ctx.fill();
   }
 
+  // Red left-pointing arrow; tipX = arrowhead tip
+  function drawLeftArrow(tipX, y, arrowLength = 40) {
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.strokeStyle = "#cc2200"; ctx.lineWidth = 1.5;
+    ctx.moveTo(tipX + 3, y); ctx.lineTo(tipX + arrowLength, y);
+    ctx.stroke();
+    ctx.beginPath(); ctx.fillStyle = "#cc2200";
+    ctx.moveTo(tipX, y);
+    ctx.lineTo(tipX + 8, y - 4);
+    ctx.lineTo(tipX + 8, y + 4);
+    ctx.closePath(); ctx.fill();
+  }
+
   // Returns the shared left-edge X for all labels in a section.
   // Measures every text at 10 px, finds the widest, and anchors so:
   //   textStartX + maxWidth + gap(4) + arrowLength(40) = conductorX - 8
@@ -73,12 +86,18 @@ export function drawDiagram(canvas, data, results) {
   }
 
   // Flow pair: upper kVA line (with arrow), lower kVA line.
-  // textStartX is pre-computed for the whole section — every call shares the same left edge.
-  function drawFlowPairLabels(conductorX, y, upstreamKVA, downstreamKVA, textStartX) {
-    const arrowTipX = conductorX - 8;
-    drawText(upstreamKVA.toFixed(2)   + " kVA", textStartX, y - 4,  10, "#111");
-    drawRightArrow(arrowTipX, y - 4, 40);
-    drawText(downstreamKVA.toFixed(2) + " kVA", textStartX, y + 12, 10, "#555");
+  // side="left": labels+arrow to the left of conductor (default, for transformers).
+  // side="right": labels+arrow to the right of conductor (for generators).
+  function drawFlowPairLabels(conductorX, y, upstreamKVA, downstreamKVA, textStartX, side = "left") {
+    if (side === "right") {
+      drawLeftArrow(conductorX + 8, y - 4, 40);
+      drawText(upstreamKVA.toFixed(2)   + " kVA", textStartX, y - 4,  10, "#111");
+      drawText(downstreamKVA.toFixed(2) + " kVA", textStartX, y + 12, 10, "#555");
+    } else {
+      drawText(upstreamKVA.toFixed(2)   + " kVA", textStartX, y - 4,  10, "#111");
+      drawRightArrow(conductorX - 8, y - 4, 40);
+      drawText(downstreamKVA.toFixed(2) + " kVA", textStartX, y + 12, 10, "#555");
+    }
   }
 
   // Grey impedance box. textStartX shared with flow pair labels for a uniform left edge.
@@ -139,7 +158,7 @@ export function drawDiagram(canvas, data, results) {
   const loadCount       = loadResults.length;
   const loadSpacing     = Math.max(110, Math.min(150, (canvasWidth - 120) / Math.max(loadCount, 1)));
   const busBarHalfWidth = Math.max(180, loadCount * loadSpacing / 2 + 40);
-  const diagramCenterX  = Math.max(canvasWidth / 2, busBarHalfWidth + 60);
+  const diagramCenterX  = busBarHalfWidth + 60;
 
   let currentY = 30;
   drawText("DIAGRAMA DE kVA's DE CORTOCIRCUITO EQUIVALENTES", canvasWidth / 2, currentY, 14, "#111", "center", true);
@@ -152,179 +171,211 @@ export function drawDiagram(canvas, data, results) {
   drawText(`Nivel de Tensión:  ${data.grid.kV} kV  /  ${busVoltageKV} kV`, diagramCenterX, currentY + 16, 11, "#333", "center");
   currentY += 38;
 
+  // ── Global layout pre-computation ───────────────────────────────────────────
+
+  const SEGMENT_LENGTH = 22;
+  const diagramTopY     = currentY;
+  const conductorStartY = diagramTopY + 40;   // start of transformer conductor (below grid symbol)
+  const flowPairAtGridY = conductorStartY + SEGMENT_LENGTH + 4;
+
+  // Reference transformer drives the vertical layout for ALL sources
+  const refTransformer   = srcResults.find(s => s.type === "transformer");
+  const refHasInCable    = refTransformer?.inCable?.enabled && refTransformer?.inCableKVAcc;
+  const refFlowPairBeforeTransformerY = refHasInCable
+    ? flowPairAtGridY + 12 + SEGMENT_LENGTH + 11 + 11 + SEGMENT_LENGTH + 4
+    : flowPairAtGridY;
+  const globalTransformerY          = refFlowPairBeforeTransformerY + 12 + SEGMENT_LENGTH + 35;
+  const globalFlowPairAtTransformerY = globalTransformerY + 35 + SEGMENT_LENGTH + 4;
+
+  // globalBusBarY = max across all source outCable configs
+  const globalBusBarY = srcResults.reduce((maxY, source) => {
+    if (source.outCable?.enabled && source.outCableKVAcc) {
+      const oCableBoxY  = globalFlowPairAtTransformerY + 12 + SEGMENT_LENGTH + 11;
+      const oCableFlowY = oCableBoxY + 11 + SEGMENT_LENGTH + 4;
+      return Math.max(maxY, oCableFlowY + 12 + SEGMENT_LENGTH + 4);
+    }
+    return Math.max(maxY, globalFlowPairAtTransformerY + 12 + SEGMENT_LENGTH + 4);
+  }, 0);
+
   // ── Source sections ──────────────────────────────────────────────────────────
 
   srcResults.forEach((source, sourceIndex) => {
-    const sourceCenterX = diagramCenterX + sourceIndex * 380;
-    const sourceLabelX  = sourceCenterX + 44;
-    const iccLabelX     = sourceCenterX + 50;
+    const isGenerator   = source.type === "generator";
+    const sourceCenterX = diagramCenterX + sourceIndex * 230;
+    const sourceLabelX  = isGenerator ? sourceCenterX + 28 : sourceCenterX + 44;
 
-    const downstreamKVAatBus              = results.downstreamKVAcc;
-    const downstreamKVAbelowTransformer   = source.outCableKVAcc != null
-      ? series(downstreamKVAatBus, source.outCableKVAcc) : downstreamKVAatBus;
-    const downstreamKVAbelowIncomingCable = series(downstreamKVAbelowTransformer, source.equipmentKVAcc);
-    const downstreamKVAatGrid             = source.inCableKVAcc != null
-      ? series(downstreamKVAbelowIncomingCable, source.inCableKVAcc) : downstreamKVAbelowIncomingCable;
+    const transformerY         = globalTransformerY;
+    const flowPairAtTransformerY = globalFlowPairAtTransformerY;
+    const busBarY              = globalBusBarY;
 
-    // Collect every left-side label text so all share the same left edge
-    const srcLabelTexts = [
-      gridKVAcc.toFixed(2)                         + " kVA",
-      downstreamKVAatGrid.toFixed(2)               + " kVA",
-      source.kVAccPassingThrough.toFixed(2)        + " kVA",
-      downstreamKVAbelowTransformer.toFixed(2)     + " kVA",
-    ];
-    if (source.inCable?.enabled && source.inCableKVAcc) {
-      srcLabelTexts.push(
-        source.kVAccAtSourceInput.toFixed(2)       + " kVA",
-        downstreamKVAbelowIncomingCable.toFixed(2) + " kVA",
-        "(" + source.inCableKVAcc.toFixed(2)       + " kVA)",
-      );
-    }
-    if (source.outCable?.enabled && source.outCableKVAcc) {
-      srcLabelTexts.push(
-        source.kVAccAtSourceOutput.toFixed(2)      + " kVA",
-        downstreamKVAatBus.toFixed(2)              + " kVA",
-        "(" + source.outCableKVAcc.toFixed(2)      + " kVA)",
-      );
-    }
-    const srcTextStartX = computeSectionTextStartX(sourceCenterX, srcLabelTexts);
-
-    // ── Layout pass ──────────────────────────────────────────────────────────
-
-    const SEGMENT_LENGTH = 22;
-
-    const gridSymbolY     = currentY;
-    const conductorStartY = currentY + 40;
-
-    const flowPairAtGridY = conductorStartY + SEGMENT_LENGTH + 4;
-
+    // Per-source inCable layout (transformers only)
     let incomingCableBoxY = null, flowPairAtIncomingCableY = null;
-    if (source.inCable?.enabled && source.inCableKVAcc) {
+    if (!isGenerator && source.inCable?.enabled && source.inCableKVAcc) {
       incomingCableBoxY        = flowPairAtGridY + 12 + SEGMENT_LENGTH + 11;
       flowPairAtIncomingCableY = incomingCableBoxY + 11 + SEGMENT_LENGTH + 4;
     }
 
-    const flowPairBeforeTransformerY = flowPairAtIncomingCableY ?? flowPairAtGridY;
-    const transformerY               = flowPairBeforeTransformerY + 12 + SEGMENT_LENGTH + 35;
-
-    const flowPairAtTransformerY = transformerY + 35 + SEGMENT_LENGTH + 4;
-
+    // Per-source outCable layout
     let outgoingCableBoxY = null, flowPairAtOutgoingCableY = null;
     if (source.outCable?.enabled && source.outCableKVAcc) {
       outgoingCableBoxY        = flowPairAtTransformerY + 12 + SEGMENT_LENGTH + 11;
       flowPairAtOutgoingCableY = outgoingCableBoxY + 11 + SEGMENT_LENGTH + 4;
     }
 
-    const flowPairBeforeBusY = flowPairAtOutgoingCableY ?? flowPairAtTransformerY;
-    const busBarY            = flowPairBeforeBusY + 12 + SEGMENT_LENGTH + 4;
-    const conductorEndY      = busBarY;
+    const downstreamKVAatBus            = results.downstreamKVAcc;
+    const downstreamKVAbelowTransformer = source.outCableKVAcc != null
+      ? series(downstreamKVAatBus, source.outCableKVAcc) : downstreamKVAatBus;
+
+    // Downstream labels used only for transformers (grid + inCable section)
+    const downstreamKVAbelowIncomingCable = series(downstreamKVAbelowTransformer, source.equipmentKVAcc);
+    const downstreamKVAatGrid             = source.inCableKVAcc != null
+      ? series(downstreamKVAbelowIncomingCable, source.inCableKVAcc) : downstreamKVAbelowIncomingCable;
+
+    // Collect label texts to compute consistent left edge (per source)
+    const srcLabelTexts = [
+      source.kVAccPassingThrough.toFixed(2)    + " kVA",
+      downstreamKVAbelowTransformer.toFixed(2) + " kVA",
+    ];
+    if (!isGenerator) {
+      srcLabelTexts.push(
+        gridKVAcc.toFixed(2)           + " kVA",
+        downstreamKVAatGrid.toFixed(2) + " kVA",
+      );
+      if (incomingCableBoxY !== null) {
+        srcLabelTexts.push(
+          source.kVAccAtSourceInput.toFixed(2)       + " kVA",
+          downstreamKVAbelowIncomingCable.toFixed(2) + " kVA",
+          "(" + source.inCableKVAcc.toFixed(2)       + " kVA)",
+        );
+      }
+    }
+    if (outgoingCableBoxY !== null) {
+      srcLabelTexts.push(
+        source.kVAccAtSourceOutput.toFixed(2) + " kVA",
+        downstreamKVAatBus.toFixed(2)         + " kVA",
+        "(" + source.outCableKVAcc.toFixed(2) + " kVA)",
+      );
+    }
+    // Generators: labels are to the right of the conductor (arrow tip at conductorX+8, 40px arrow, 4px gap)
+    const srcTextStartX = isGenerator
+      ? sourceCenterX + 52
+      : computeSectionTextStartX(sourceCenterX, srcLabelTexts);
 
     // ── Render pass ──────────────────────────────────────────────────────────
 
-    // 1. Continuous blue line
-    drawVerticalLine(sourceCenterX, conductorStartY, conductorEndY);
+    // 1. Vertical conductor line
+    const conductorTopY = isGenerator ? (transformerY - 24) : conductorStartY;
+    drawVerticalLine(sourceCenterX, conductorTopY, busBarY);
 
     // 2. Symbols
-    drawGridSymbol(sourceCenterX, gridSymbolY);
-    if (incomingCableBoxY !== null) drawImpedanceBox(sourceCenterX, incomingCableBoxY, source.inCableKVAcc.toFixed(2), srcTextStartX);
-    drawTransformer(sourceCenterX, transformerY);
-    if (outgoingCableBoxY !== null) drawImpedanceBox(sourceCenterX, outgoingCableBoxY, source.outCableKVAcc.toFixed(2), srcTextStartX);
-    drawBusBar(sourceCenterX - busBarHalfWidth, sourceCenterX + busBarHalfWidth, busBarY);
-
-    // 3. Right-side technical data
-    drawText(`Un: ${data.grid.kV} kV`,                             sourceLabelX, gridSymbolY + 4,  11, "#222");
-    drawText(`Icc: ${data.grid.Icc.toFixed(1)} kA`,                sourceLabelX, gridSymbolY + 18, 11, "#222");
-    drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`,    sourceLabelX, gridSymbolY + 32, 11, "#c00", true);
-
-    if (source.type === "transformer") {
-      drawText(`kVA:  ${source.kVA}`,          sourceLabelX, transformerY - 28, 11, "#222");
-      drawText(`Un:  ${source.kVsec} kV`,      sourceLabelX, transformerY - 14, 11, "#222");
-      drawText(`Z%:  ${source.zPct}%`,         sourceLabelX, transformerY,      11, "#222");
-      drawTextWithKVAccSubscript(`:  (${source.equipmentKVAcc.toFixed(2)} kVA)`, sourceLabelX, transformerY + 14, 11, "#c00");
+    if (!isGenerator) {
+      drawGridSymbol(sourceCenterX, diagramTopY);
+      if (incomingCableBoxY !== null) drawImpedanceBox(sourceCenterX, incomingCableBoxY, source.inCableKVAcc.toFixed(2), srcTextStartX);
+      drawTransformer(sourceCenterX, transformerY);
     } else {
       ctx.setLineDash([]);
       ctx.beginPath(); ctx.arc(sourceCenterX, transformerY, 24, 0, Math.PI * 2);
       ctx.fillStyle = "#fff"; ctx.fill();
       ctx.strokeStyle = "#1a6e1a"; ctx.lineWidth = 2; ctx.stroke();
       drawText("G", sourceCenterX, transformerY + 6, 16, "#1a6e1a", "center", true);
-      drawText(`kVA: ${source.kVA}`,  sourceLabelX, transformerY - 16, 11, "#222");
-      drawText(`X'': ${source.xdpp}`, sourceLabelX, transformerY - 2,  11, "#222");
-      drawTextWithKVAccSubscript(`: (${source.equipmentKVAcc.toFixed(2)} kVA)`, sourceLabelX, transformerY + 12, 11, "#c00");
+    }
+    if (outgoingCableBoxY !== null) drawImpedanceBox(sourceCenterX, outgoingCableBoxY, source.outCableKVAcc.toFixed(2), srcTextStartX);
+
+    // 3. Right-side technical data
+    if (!isGenerator) {
+      drawText(`Un: ${data.grid.kV} kV`,                          sourceLabelX, diagramTopY + 4,  11, "#222");
+      drawText(`Icc: ${data.grid.Icc.toFixed(1)} kA`,             sourceLabelX, diagramTopY + 18, 11, "#222");
+      drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, diagramTopY + 32, 11, "#c00", true);
+      drawText(`kVA:  ${source.kVA}`,     sourceLabelX, transformerY - 28, 11, "#222");
+      drawText(`Un:  ${source.kVsec} kV`, sourceLabelX, transformerY - 14, 11, "#222");
+      drawText(`Z%:  ${source.zPct}%`,    sourceLabelX, transformerY,      11, "#222");
+      drawTextWithKVAccSubscript(`:  (${source.equipmentKVAcc.toFixed(2)} kVA)`, sourceLabelX, transformerY + 14, 11, "#c00");
+    } else {
+      drawText(`kVA: ${source.kVA}`,  srcTextStartX, transformerY - 16, 11, "#222");
+      drawText(`X'': ${source.xdpp}`, srcTextStartX, transformerY - 2,  11, "#222");
+      drawTextWithKVAccSubscript(`: (${source.equipmentKVAcc.toFixed(2)} kVA)`, srcTextStartX, transformerY + 12, 11, "#c00");
     }
 
-    // 4. Left-side flow pair labels — all share srcTextStartX
-    drawFlowPairLabels(sourceCenterX, flowPairAtGridY, gridKVAcc, downstreamKVAatGrid, srcTextStartX);
-    if (flowPairAtIncomingCableY !== null)
-      drawFlowPairLabels(sourceCenterX, flowPairAtIncomingCableY, source.kVAccAtSourceInput, downstreamKVAbelowIncomingCable, srcTextStartX);
-    drawFlowPairLabels(sourceCenterX, flowPairAtTransformerY, source.kVAccPassingThrough, downstreamKVAbelowTransformer, srcTextStartX);
+    // 4. Flow pair labels (left of conductor for transformers, right for generators)
+    const flowSide = isGenerator ? "right" : "left";
+    if (!isGenerator) {
+      drawFlowPairLabels(sourceCenterX, flowPairAtGridY, gridKVAcc, downstreamKVAatGrid, srcTextStartX);
+      if (flowPairAtIncomingCableY !== null)
+        drawFlowPairLabels(sourceCenterX, flowPairAtIncomingCableY, source.kVAccAtSourceInput, downstreamKVAbelowIncomingCable, srcTextStartX);
+    }
+    drawFlowPairLabels(sourceCenterX, flowPairAtTransformerY, source.kVAccPassingThrough, downstreamKVAbelowTransformer, srcTextStartX, flowSide);
     if (flowPairAtOutgoingCableY !== null)
-      drawFlowPairLabels(sourceCenterX, flowPairAtOutgoingCableY, source.kVAccAtSourceOutput, downstreamKVAatBus, srcTextStartX);
+      drawFlowPairLabels(sourceCenterX, flowPairAtOutgoingCableY, source.kVAccAtSourceOutput, downstreamKVAatBus, srcTextStartX, flowSide);
+  });
 
-    // 5. Icc above bus bar
-    const shortCircuitCurrentAtBus = busKVAcc / (Math.sqrt(3) * busVoltageKV);
-    drawText(`Icc:  ${shortCircuitCurrentAtBus.toFixed(3)}`, iccLabelX, busBarY - 16, 11, "#333");
+  // ── Bus bar — drawn once spanning all sources and the load zone ──────────────
 
-    currentY = busBarY;
+  currentY = globalBusBarY;
+  const busBarLeftX  = diagramCenterX - busBarHalfWidth;
+  const busBarRightX = diagramCenterX + (srcResults.length - 1) * 230 + busBarHalfWidth;
+  drawBusBar(busBarLeftX, busBarRightX, currentY);
 
-    // ── Load branches ────────────────────────────────────────────────────────
+  // Icc at bus bar — drawn once, to the right of the first source
+  const shortCircuitCurrentAtBus = busKVAcc / (Math.sqrt(3) * busVoltageKV);
+  drawText(`Icc:  ${shortCircuitCurrentAtBus.toFixed(3)}`, diagramCenterX + 50, currentY - 16, 11, "#333");
 
-    const firstLoadCenterX = sourceCenterX - ((loadCount - 1) * loadSpacing) / 2;
+  // ── Load branches — drawn once below the common bus bar ─────────────────────
 
-    loadResults.forEach((load, loadIndex) => {
-      const loadCenterX  = firstLoadCenterX + loadIndex * loadSpacing;
-      if (loadCenterX !== sourceCenterX) drawHorizontalLine(loadCenterX, sourceCenterX, busBarY);
+  const firstLoadCenterX = diagramCenterX - ((loadCount - 1) * loadSpacing) / 2;
 
-      const upstreamKVAatBus = busKVAcc - load.kVAccContributionToBus;
+  loadResults.forEach((load, loadIndex) => {
+    const loadCenterX = firstLoadCenterX + loadIndex * loadSpacing;
 
-      // Collect every label text in this branch for consistent left edge
-      const loadLabelTexts = [
-        upstreamKVAatBus.toFixed(2)            + " kVA",
-        load.kVAccContributionToBus.toFixed(2) + " kVA",
-      ];
-      if (load.cable?.enabled && load.cableKVAcc) {
-        const upstreamKVAatTerminalPreview = series(upstreamKVAatBus, load.cableKVAcc);
-        loadLabelTexts.push(
-          upstreamKVAatTerminalPreview.toFixed(2) + " kVA",
-          load.motorKVAcc.toFixed(2)              + " kVA",
-          "(" + load.cableKVAcc.toFixed(2)        + " kVA)",
-        );
-      }
-      const loadTextStartX = computeSectionTextStartX(loadCenterX, loadLabelTexts);
+    const upstreamKVAatBus = upstreamKVAcc;
 
-      // Load layout pass
-      const loadFlowPair1Y = busBarY + 4 + SEGMENT_LENGTH + 4;
+    // Collect every label text in this branch for consistent left edge
+    const loadLabelTexts = [
+      upstreamKVAatBus.toFixed(2)            + " kVA",
+      load.kVAccContributionToBus.toFixed(2) + " kVA",
+    ];
+    if (load.cable?.enabled && load.cableKVAcc) {
+      const upstreamKVAatTerminalPreview = series(upstreamKVAatBus, load.cableKVAcc);
+      loadLabelTexts.push(
+        upstreamKVAatTerminalPreview.toFixed(2) + " kVA",
+        load.motorKVAcc.toFixed(2)              + " kVA",
+        "(" + load.cableKVAcc.toFixed(2)        + " kVA)",
+      );
+    }
+    const loadTextStartX = computeSectionTextStartX(loadCenterX, loadLabelTexts);
 
-      let loadCableBoxY = null, loadFlowPair2Y = null;
-      if (load.cable?.enabled && load.cableKVAcc) {
-        loadCableBoxY  = loadFlowPair1Y + 12 + SEGMENT_LENGTH + 11;
-        loadFlowPair2Y = loadCableBoxY  + 11 + SEGMENT_LENGTH + 4;
-      }
+    // Load layout pass
+    const loadFlowPair1Y = currentY + 4 + SEGMENT_LENGTH + 4;
 
-      const flowPairBeforeLoadCircleY = loadFlowPair2Y ?? loadFlowPair1Y;
-      const loadCircleCenterY         = flowPairBeforeLoadCircleY + 12 + SEGMENT_LENGTH + 24;
+    let loadCableBoxY = null, loadFlowPair2Y = null;
+    if (load.cable?.enabled && load.cableKVAcc) {
+      loadCableBoxY  = loadFlowPair1Y + 12 + SEGMENT_LENGTH + 11;
+      loadFlowPair2Y = loadCableBoxY  + 11 + SEGMENT_LENGTH + 4;
+    }
 
-      // 1. Line
-      drawVerticalLine(loadCenterX, busBarY + 4, loadCircleCenterY);
+    const flowPairBeforeLoadCircleY = loadFlowPair2Y ?? loadFlowPair1Y;
+    const loadCircleCenterY         = flowPairBeforeLoadCircleY + 12 + SEGMENT_LENGTH + 24;
 
-      // 2. Symbols
-      if (loadCableBoxY !== null) drawImpedanceBox(loadCenterX, loadCableBoxY, load.cableKVAcc.toFixed(2), loadTextStartX);
-      drawLoadSymbol(loadCenterX, loadCircleCenterY, load.label);
+    // 1. Line
+    drawVerticalLine(loadCenterX, currentY + 4, loadCircleCenterY);
 
-      // 3. Flow pair labels — all share loadTextStartX
-      drawFlowPairLabels(loadCenterX, loadFlowPair1Y, upstreamKVAatBus, load.kVAccContributionToBus, loadTextStartX);
+    // 2. Symbols
+    if (loadCableBoxY !== null) drawImpedanceBox(loadCenterX, loadCableBoxY, load.cableKVAcc.toFixed(2), loadTextStartX);
+    drawLoadSymbol(loadCenterX, loadCircleCenterY, load.label);
 
-      let upstreamKVAatTerminal = upstreamKVAatBus;
-      if (loadFlowPair2Y !== null) {
-        upstreamKVAatTerminal = series(upstreamKVAatBus, load.cableKVAcc);
-        drawFlowPairLabels(loadCenterX, loadFlowPair2Y, upstreamKVAatTerminal, load.motorKVAcc, loadTextStartX);
-        const shortCircuitCurrentAtLoad = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
-        drawText(`Icc:  ${shortCircuitCurrentAtLoad.toFixed(2)}`, loadCenterX + 50, loadFlowPair2Y + 4, 11, "#333");
-      } else {
-        const iccAtLoad  = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
-        const iascAtLoad = iccAtLoad * asymmetricFactor;
-        drawText(`Icc: ${iccAtLoad.toFixed(2)}`,  loadCenterX + 30, loadCircleCenterY - 10, 11, "#333");
-        drawText(`Iasc: ${iascAtLoad.toFixed(2)}`, loadCenterX + 30, loadCircleCenterY + 4,  11, "#333");
-      }
-    });
+    // 3. Flow pair labels
+    drawFlowPairLabels(loadCenterX, loadFlowPair1Y, upstreamKVAatBus, load.kVAccContributionToBus, loadTextStartX);
+
+    let upstreamKVAatTerminal = upstreamKVAatBus;
+    if (loadFlowPair2Y !== null) {
+      upstreamKVAatTerminal = series(upstreamKVAatBus, load.cableKVAcc);
+      drawFlowPairLabels(loadCenterX, loadFlowPair2Y, upstreamKVAatTerminal, load.motorKVAcc, loadTextStartX);
+      const shortCircuitCurrentAtLoad = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
+      drawText(`Icc: ${shortCircuitCurrentAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 52, 11, "#333", "center");
+    } else {
+      const iccAtLoad  = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
+      const iascAtLoad = iccAtLoad * asymmetricFactor;
+      drawText(`Icc: ${iccAtLoad.toFixed(2)}`,  loadCenterX, loadCircleCenterY + 52, 11, "#333", "center");
+      drawText(`Iasc: ${iascAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 66, 11, "#333", "center");
+    }
   });
 }

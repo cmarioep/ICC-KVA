@@ -44,12 +44,15 @@ function runCalc(data) {
 
     let inCableKVAcc = null;
     let kVAccAtSourceInput = gridKVAcc;
-    if (source.inCable.enabled) {
+    if (source.type !== "generator" && source.inCable.enabled) {
       inCableKVAcc      = cableKVA(grid.kV, getZ(source.inCable.type, source.inCable.gauge, source.inCable.material, source.inCable.canal), source.inCable.len);
       kVAccAtSourceInput = series(gridKVAcc, inCableKVAcc);
     }
 
-    const kVAccPassingThrough = series(kVAccAtSourceInput, equipmentKVAcc);
+    // Generator is an independent source — not in series with the grid
+    const kVAccPassingThrough = source.type === "generator"
+      ? equipmentKVAcc
+      : series(kVAccAtSourceInput, equipmentKVAcc);
 
     let outCableKVAcc = null;
     let kVAccAtSourceOutput = kVAccPassingThrough;
@@ -129,7 +132,7 @@ export function useIccCalc() {
       const canvasElement  = canvasRef.current;
       const loadCount      = result.loadResults.length;
       const sourceCount    = result.srcResults.length;
-      canvasElement.width  = Math.max(560, 120 + loadCount * 140 + sourceCount * 380);
+      canvasElement.width  = Math.max(560, 120 + loadCount * 140 + sourceCount * 230);
 
       const hasMediumVoltageCable = data.sources[0]?.inCable?.enabled  ? 1 : 0;
       const hasLowVoltageCable    = data.sources[0]?.outCable?.enabled ? 1 : 0;
