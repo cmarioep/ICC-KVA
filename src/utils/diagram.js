@@ -89,13 +89,14 @@ export function drawDiagram(canvas, data, results) {
   // side="left": labels+arrow to the left of conductor (default, for transformers).
   // side="right": labels+arrow to the right of conductor (for generators).
   function drawFlowPairLabels(conductorX, y, upstreamKVA, downstreamKVA, textStartX, side = "left") {
+    const arrowY = y; // midpoint between upper text (y-4) and lower text (y+12)
     if (side === "right") {
-      drawLeftArrow(conductorX + 8, y - 4, 40);
+      drawLeftArrow(conductorX + 8, arrowY, 40);
       drawText(upstreamKVA.toFixed(2)   + " kVA", textStartX, y - 4,  10, "#111");
       drawText(downstreamKVA.toFixed(2) + " kVA", textStartX, y + 12, 10, "#555");
     } else {
       drawText(upstreamKVA.toFixed(2)   + " kVA", textStartX, y - 4,  10, "#111");
-      drawRightArrow(conductorX - 8, y - 4, 40);
+      drawRightArrow(conductorX - 8, arrowY, 40);
       drawText(downstreamKVA.toFixed(2) + " kVA", textStartX, y + 12, 10, "#555");
     }
   }
@@ -302,6 +303,9 @@ export function drawDiagram(canvas, data, results) {
     // 4. Flow pair labels (left of conductor for transformers, right for generators)
     const flowSide = isGenerator ? "right" : "left";
     if (!isGenerator) {
+      // Horizontal convergence line spanning only the text block width, at arrow mid-level
+      const textBlockEndX = sourceCenterX - 52; // conductorX - 8(tip gap) - 40(arrow) - 4(text gap)
+      drawLine(srcTextStartX, flowPairAtGridY, textBlockEndX, flowPairAtGridY, 1, "#888");
       drawFlowPairLabels(sourceCenterX, flowPairAtGridY, gridKVAcc, downstreamKVAatGrid, srcTextStartX);
       if (flowPairAtIncomingCableY !== null)
         drawFlowPairLabels(sourceCenterX, flowPairAtIncomingCableY, source.kVAccAtSourceInput, downstreamKVAbelowIncomingCable, srcTextStartX);
