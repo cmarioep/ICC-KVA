@@ -19,16 +19,30 @@ const createDefaultLoad = (id) => ({
 
 const createInitialData = () => ({
   grid: { kV: 13.2, Icc: 10, kVAcc: 0 },
-  sources: [{
-    id: 1, type: "transformer", label: "TR",
-    kVA: 630, kVpri: 13.2, kVsec: 0.208, zPct: 6, xdpp: 0.17,
-    inCable:  { enabled: true, type: "MT15",  gauge: "1/0", material: "Cobre", canal: "PVC", len: 50 },
-    outCable: { enabled: true, type: "BT600", gauge: "500", material: "Cobre", canal: "PVC", len: 50 },
-  }],
-  loads: [{
-    id: 1, label: "BOMBA", hp: 3,
-    cable: { enabled: true, type: "BT600", gauge: "8", material: "Cobre", canal: "PVC", len: 25 },
-  }],
+  sources: [
+    {
+      id: 1, type: "transformer", label: "TR",
+      kVA: 630, kVpri: 13.2, kVsec: 0.208, zPct: 6, xdpp: 0.17,
+      inCable:  { enabled: true, type: "MT15",  gauge: "1/0", material: "Cobre", canal: "PVC", len: 50 },
+      outCable: { enabled: true, type: "BT600", gauge: "500", material: "Cobre", canal: "PVC", len: 50 },
+    },
+    {
+      id: 2, type: "generator", label: "GEN 2",
+      kVA: 150, kVpri: 13.2, kVsec: 0.208, zPct: 4.5, xdpp: 0.17,
+      inCable:  createDefaultCable(),
+      outCable: { enabled: true, type: "BT600", gauge: "1/0", material: "Cobre", canal: "PVC", len: 25 },
+    },
+  ],
+  loads: [
+    {
+      id: 1, label: "BOMBA", hp: 3,
+      cable: { enabled: true, type: "BT600", gauge: "8", material: "Cobre", canal: "PVC", len: 25 },
+    },
+    {
+      id: 2, label: "BOMBA", hp: 3,
+      cable: { enabled: true, type: "BT600", gauge: "8", material: "Cobre", canal: "PVC", len: 25 },
+    },
+  ],
 });
 
 function runCalc(data) {
@@ -37,6 +51,7 @@ function runCalc(data) {
   const gridKVAcc = grid.kVAcc > 0 ? grid.kVAcc : Math.sqrt(3) * grid.kV * (grid.Icc * 1000);
 
   let upstreamKVAcc = 0;
+  let generatorBusKVAcc = 0;
   const srcResults = sources.map(source => {
     const equipmentKVAcc = source.type === "transformer"
       ? source.kVA / (source.zPct / 100)
@@ -61,13 +76,15 @@ function runCalc(data) {
       kVAccAtSourceOutput = series(kVAccPassingThrough, outCableKVAcc);
     }
 
-    upstreamKVAcc += kVAccAtSourceOutput;
+    if (source.type === "generator") generatorBusKVAcc += kVAccAtSourceOutput;
+    else upstreamKVAcc += kVAccAtSourceOutput;
     return { ...source, equipmentKVAcc, inCableKVAcc, kVAccAtSourceInput, kVAccPassingThrough, outCableKVAcc, kVAccAtSourceOutput };
   });
 
   const busVoltageKV = sources[0]?.kVsec ?? 0.48;
 
-  let downstreamKVAcc = 0;
+  // Generators are local sources — their bus contribution is downstream, like motors
+  let downstreamKVAcc = generatorBusKVAcc;
   const loadResults = loads.map(load => {
     const xdpp         = load.hp >= 50 ? 0.17 : 0.20;
     const motorKVAcc   = load.hp / xdpp;

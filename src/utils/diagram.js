@@ -222,7 +222,10 @@ export function drawDiagram(canvas, data, results) {
       flowPairAtOutgoingCableY = outgoingCableBoxY + 11 + SEGMENT_LENGTH + 4;
     }
 
-    const downstreamKVAatBus            = results.downstreamKVAcc;
+    // Generators are local sources at the bus: they don't see their own contribution as downstream
+    const downstreamKVAatBus = isGenerator
+      ? results.downstreamKVAcc - source.kVAccAtSourceOutput
+      : results.downstreamKVAcc;
     const downstreamKVAbelowTransformer = source.outCableKVAcc != null
       ? series(downstreamKVAatBus, source.outCableKVAcc) : downstreamKVAatBus;
 
