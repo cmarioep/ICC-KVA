@@ -2,57 +2,151 @@ import { useState, useRef, useEffect } from "react";
 import { getZ, series, cableKVA } from "../utils/cableUtils";
 import { drawDiagram } from "../utils/diagram";
 
-const createDefaultCable = () => ({
-  enabled: false, type: "BT600", gauge: "2/0", material: "Cobre", canal: "PVC", len: 50,
-});
-
-const createDefaultSource = (id) => ({
-  id, type: "transformer", label: `Trafo ${id}`,
-  kVA: 150, kVpri: 13.2, kVsec: 0.208, zPct: 4.5, xdpp: 0.17,
-  inCable: createDefaultCable(), outCable: createDefaultCable(),
-});
-
-const createDefaultMotorLoad = (id) => ({
-  id, loadType: "motor", label: `Motor ${id}`, hp: 50,
-  cable: { enabled: true, type: "BT600", gauge: "2/0", material: "Cobre", canal: "PVC", len: 50 },
-});
-
-const createDefaultResistiveLoad = (id) => ({
-  id, loadType: "resistive", label: `Carga R ${id}`,
-  cable: { enabled: true, type: "BT600", gauge: "2/0", material: "Cobre", canal: "PVC", len: 50 },
-});
-
-const createInitialData = () => ({
-  grid: { kV: 13.2, Icc: 10, kVAcc: 0 },
-  sources: [
+const DEFAULT_JSON = JSON.stringify({
+  generalLoadtension: "208V",
+  networkOperator: {
+    tesion: 13.2,
+    Icc: 10,
+    feeder: { type: "MT15", material: "Cobre", conduit: "PVC", awg: "1/0", long: 50 },
+  },
+  transformador: {
+    kva: 150,
+    feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: 50 },
+  },
+  generator: {
+    kva: null,
+    feeder: { type: null, material: null, conduit: null, awg: null, long: null },
+  },
+  circuits: [
     {
-      id: 1, type: "transformer", label: "TR",
-      kVA: 630, kVpri: 13.2, kVsec: 0.208, zPct: 6, xdpp: 0.17,
-      inCable:  { enabled: true, type: "MT15",  gauge: "1/0", material: "Cobre", canal: "PVC", len: 50 },
-      outCable: { enabled: true, type: "BT600", gauge: "500", material: "Cobre", canal: "PVC", len: 50 },
+      active: true, name: "Reserva", loadType: "Normal", type: "monofasico",
+      voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "15",
+      circuitNumber: 1, circuitNumbers: [1],
     },
     {
-      id: 2, type: "generator", label: "GEN 2",
-      kVA: 150, kVpri: 13.2, kVsec: 0.208, zPct: 4.5, xdpp: 0.17,
-      inCable:  createDefaultCable(),
-      outCable: { enabled: true, type: "BT600", gauge: "1/0", material: "Cobre", canal: "PVC", len: 25 },
+      active: true, name: "Reserva", loadType: "Motor", type: "bifasico",
+      voltage: 208, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "20",
+      circuitNumber: 2, circuitNumbers: [2, 4],
+    },
+    {
+      active: true, name: "Reserva", loadType: "Especial", type: "monofasico",
+      voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "20",
+      circuitNumber: 3, circuitNumbers: [3],
+    },
+    {
+      active: false, name: "Reserva", loadType: "", type: "",
+      voltage: "", load: "", awgType: "BT600", material: "Cobre", conduit: "", awg: "", long: "",
+      circuitNumber: 4, circuitNumbers: [4],
+    },
+    {
+      active: true, name: "Reserva", loadType: "Normal", type: "monofasico",
+      voltage: 120, load: "800", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "35",
+      circuitNumber: 5, circuitNumbers: [5],
+    },
+    {
+      active: true, name: "Reserva", loadType: "Iluminación", type: "monofasico",
+      voltage: 120, load: "800", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "25",
+      circuitNumber: 6, circuitNumbers: [6],
     },
   ],
-  loads: [
-    {
-      id: 1, loadType: "motor", label: "BOMBA", hp: 3,
-      cable: { enabled: true, type: "BT600", gauge: "8", material: "Cobre", canal: "PVC", len: 25 },
+}, null, 2);
+
+const FP = 0.9;
+
+const Z_PCT_BY_KVA = {
+  "45": 4, "75": 4, "112.5": 4.5,
+  "150": 6, "250": 6, "500": 6, "630": 6,
+};
+
+function transformJsonInput(input) {
+  const busVoltageV  = parseFloat(String(input.generalLoadtension));
+  const busVoltageKV = busVoltageV / 1000;
+
+  const grid = {
+    kV:    input.networkOperator.tesion,
+    Icc:   input.networkOperator.Icc,
+    kVAcc: 0,
+  };
+
+  const netFeeder = input.networkOperator.feeder;
+  const trFeeder  = input.transformador.feeder;
+
+  const sources = [{
+    id: 1, type: "transformer", label: "TR",
+    kVA:   input.transformador.kva,
+    kVpri: input.networkOperator.tesion,
+    kVsec: busVoltageKV,
+    zPct:  input.transformador.zPct ?? Z_PCT_BY_KVA[String(input.transformador.kva)] ?? 6,
+    xdpp:  0.17,
+    inCable: {
+      enabled:  true,
+      type:     netFeeder.type,
+      gauge:    String(netFeeder.awg),
+      material: netFeeder.material,
+      canal:    netFeeder.conduit,
+      len:      netFeeder.long,
     },
-    {
-      id: 2, loadType: "motor", label: "BOMBA", hp: 3,
-      cable: { enabled: true, type: "BT600", gauge: "8", material: "Cobre", canal: "PVC", len: 25 },
+    outCable: {
+      enabled:  true,
+      type:     trFeeder.type,
+      gauge:    String(trFeeder.awg),
+      material: trFeeder.material,
+      canal:    trFeeder.conduit,
+      len:      trFeeder.long,
     },
-  ],
-});
+  }];
+
+  if (input.generator?.kva != null) {
+    const gf = input.generator.feeder;
+    sources.push({
+      id: 2, type: "generator", label: "GEN",
+      kVA:   input.generator.kva,
+      kVpri: busVoltageKV,
+      kVsec: busVoltageKV,
+      zPct:  4.5,
+      xdpp:  0.17,
+      inCable:  { enabled: false, type: "BT600", gauge: "2/0", material: "Cobre", canal: "PVC", len: 50 },
+      outCable: gf?.awg != null
+        ? { enabled: true, type: gf.type, gauge: String(gf.awg), material: gf.material, canal: gf.conduit, len: gf.long }
+        : { enabled: false, type: "BT600", gauge: "2/0", material: "Cobre", canal: "PVC", len: 50 },
+    });
+  }
+
+  const loads = input.circuits
+    .filter(c => c.active)
+    .map((circuit, index) => {
+      const isMotor   = circuit.loadType === "Motor";
+      const voltageKV = circuit.voltage / 1000;
+      const loadVA    = parseFloat(circuit.load);
+      const hp        = isMotor ? (loadVA * FP) / 746 : null;
+
+      return {
+        id:              index + 1,
+        loadType:        isMotor ? "motor" : "resistive",
+        label:           circuit.name,
+        hp,
+        voltageKV,
+        circuitNumber:   circuit.circuitNumber,
+        circuitNumbers:  circuit.circuitNumbers,
+        circuitLoadType: circuit.loadType,
+        circuitPhase:    circuit.type,
+        loadVA,
+        cable: {
+          enabled:  true,
+          type:     circuit.awgType,
+          gauge:    String(circuit.awg),
+          material: circuit.material,
+          canal:    circuit.conduit,
+          len:      parseFloat(circuit.long),
+        },
+      };
+    });
+
+  return { grid, sources, loads, busVoltageKV };
+}
 
 function runCalc(data) {
   const { grid, sources, loads } = data;
-  // √3 × kV × Icc(A) = kVA — usuario ingresa kA, se convierte a A multiplicando ×1000
   const gridKVAcc = grid.kVAcc > 0 ? grid.kVAcc : Math.sqrt(3) * grid.kV * (grid.Icc * 1000);
 
   let upstreamKVAcc = 0;
@@ -65,11 +159,10 @@ function runCalc(data) {
     let inCableKVAcc = null;
     let kVAccAtSourceInput = gridKVAcc;
     if (source.type !== "generator" && source.inCable.enabled) {
-      inCableKVAcc      = cableKVA(grid.kV, getZ(source.inCable.type, source.inCable.gauge, source.inCable.material, source.inCable.canal), source.inCable.len);
+      inCableKVAcc       = cableKVA(grid.kV, getZ(source.inCable.type, source.inCable.gauge, source.inCable.material, source.inCable.canal), source.inCable.len);
       kVAccAtSourceInput = series(gridKVAcc, inCableKVAcc);
     }
 
-    // Generator is an independent source — not in series with the grid
     const kVAccPassingThrough = source.type === "generator"
       ? equipmentKVAcc
       : series(kVAccAtSourceInput, equipmentKVAcc);
@@ -86,30 +179,32 @@ function runCalc(data) {
     return { ...source, equipmentKVAcc, inCableKVAcc, kVAccAtSourceInput, kVAccPassingThrough, outCableKVAcc, kVAccAtSourceOutput };
   });
 
-  const busVoltageKV = sources[0]?.kVsec ?? 0.48;
+  const busVoltageKV = data.busVoltageKV ?? sources[0]?.kVsec ?? 0.48;
 
-  // Generators are local sources — their bus contribution is downstream, like motors
   let downstreamKVAcc = generatorBusKVAcc;
   const loadResults = loads.map(load => {
+    const loadVoltageKV = load.voltageKV ?? busVoltageKV;
+
     if (load.loadType === "resistive") {
       let cableKVAcc = null;
       if (load.cable.enabled) {
-        cableKVAcc = cableKVA(busVoltageKV, getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal), load.cable.len);
+        cableKVAcc = cableKVA(loadVoltageKV, getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal), load.cable.len);
       }
       return { ...load, cableKVAcc, kVAccContributionToBus: 0, motorKVAcc: null, xdpp: null };
     }
-    const xdpp         = load.hp >= 50 ? 0.17 : 0.20;
-    const motorKVAcc   = load.hp / xdpp;
+
+    const xdpp       = load.hp >= 50 ? 0.17 : 0.20;
+    const motorKVAcc = load.hp / xdpp;
     let kVAccContributionToBus = motorKVAcc, cableKVAcc = null;
     if (load.cable.enabled) {
-      cableKVAcc             = cableKVA(busVoltageKV, getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal), load.cable.len);
+      cableKVAcc             = cableKVA(loadVoltageKV, getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal), load.cable.len);
       kVAccContributionToBus = series(motorKVAcc, cableKVAcc);
     }
     downstreamKVAcc += kVAccContributionToBus;
     return { ...load, xdpp, motorKVAcc, cableKVAcc, kVAccContributionToBus };
   });
 
-  const busKVAcc                   = upstreamKVAcc + downstreamKVAcc;
+  const busKVAcc                      = upstreamKVAcc + downstreamKVAcc;
   const symmetricShortCircuitCurrent  = busKVAcc / (Math.sqrt(3) * busVoltageKV);
   const asymmetricFactor              = busVoltageKV < 0.6 ? 1.25 : 1.6;
 
@@ -128,36 +223,29 @@ function runCalc(data) {
 }
 
 export function useIccCalc() {
-  const [data, setData]     = useState(createInitialData());
-  const [view, setView]     = useState("form");
-  const [result, setResult] = useState(null);
-  const canvasRef           = useRef(null);
+  const [jsonText,  setJsonText]  = useState(DEFAULT_JSON);
+  const [jsonError, setJsonError] = useState(null);
+  const [data,      setData]      = useState(null);
+  const [view,      setView]      = useState("json");
+  const [result,    setResult]    = useState(null);
+  const canvasRef                 = useRef(null);
 
-  const updateField = (path, value) => setData(prevData => {
-    const updatedData  = JSON.parse(JSON.stringify(prevData));
-    const pathSegments = path.split(".");
-    let node = updatedData;
-    pathSegments.slice(0, -1).forEach(segment => {
-      node = segment.match(/^\d+$/) ? node[+segment] : node[segment];
-    });
-    const leafKey = pathSegments[pathSegments.length - 1];
-    if (leafKey.match(/^\d+$/)) node[+leafKey] = value; else node[leafKey] = value;
-    return updatedData;
-  });
-
-  const addSource    = () => setData(prevData => ({ ...prevData, sources: [...prevData.sources, createDefaultSource(prevData.sources.length + 1)] }));
-  const removeSource = (id) => setData(prevData => ({ ...prevData, sources: prevData.sources.filter(source => source.id !== id) }));
-  const addLoad      = (type = "motor") => setData(prevData => ({ ...prevData, loads: [...prevData.loads, type === "resistive" ? createDefaultResistiveLoad(prevData.loads.length + 1) : createDefaultMotorLoad(prevData.loads.length + 1)] }));
-  const removeLoad   = (id) => setData(prevData => ({ ...prevData, loads: prevData.loads.filter(load => load.id !== id) }));
-
-  const calculate = () => {
-    const calculationResult = runCalc(data);
-    setResult(calculationResult);
-    setView("results");
+  const parseAndCalculate = () => {
+    try {
+      const parsed          = JSON.parse(jsonText);
+      const transformedData = transformJsonInput(parsed);
+      const calcResult      = runCalc(transformedData);
+      setData(transformedData);
+      setResult(calcResult);
+      setJsonError(null);
+      setView("results");
+    } catch (e) {
+      setJsonError(e.message);
+    }
   };
 
   useEffect(() => {
-    if (view === "results" && result && canvasRef.current) {
+    if (view === "results" && result && data && canvasRef.current) {
       const canvasElement  = canvasRef.current;
       const loadCount      = result.loadResults.length;
       const sourceCount    = result.srcResults.length;
@@ -173,5 +261,5 @@ export function useIccCalc() {
     }
   }, [view, result, data]);
 
-  return { data, view, setView, result, canvasRef, updateField, addSource, removeSource, addLoad, removeLoad, calculate };
+  return { jsonText, setJsonText, jsonError, data, view, setView, result, canvasRef, parseAndCalculate };
 }

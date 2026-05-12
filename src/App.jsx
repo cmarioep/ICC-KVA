@@ -1,39 +1,9 @@
 import "./App.scss";
-import { CABLE_TYPES } from "./utils/cableParams";
-import { getZ, getGauges, series } from "./utils/cableUtils";
+import { getZ, series } from "./utils/cableUtils";
 import { formatNumber } from "./utils/format";
 import { useIccCalc } from "./hooks/useIccCalc";
 
-/* ── PRIMITIVOS DE UI ──────────────────────────────────────── */
-function FormInput({ value, onChange, type = "number", min, step, placeholder }) {
-  return (
-    <input
-      type={type} value={value} placeholder={placeholder} min={min} step={step ?? "any"}
-      className="inp"
-      onChange={e => onChange(type === "number" ? parseFloat(e.target.value) || 0 : e.target.value)}
-    />
-  );
-}
-
-function SelectInput({ value, onChange, options }) {
-  return (
-    <select value={value} onChange={e => onChange(e.target.value)} className="sel">
-      {options.map(([optionValue, optionLabel]) => (
-        <option key={optionValue} value={optionValue}>{optionLabel}</option>
-      ))}
-    </select>
-  );
-}
-
-function FormField({ label, children }) {
-  return (
-    <div className="fld">
-      <span className="fld__label">{label}</span>
-      {children}
-    </div>
-  );
-}
-
+/* ── UI PRIMITIVOS ──────────────────────────────────────── */
 function Card({ children }) {
   return <div className="card">{children}</div>;
 }
@@ -50,60 +20,7 @@ function SectionHeader({ number, title, sub }) {
   );
 }
 
-function CableForm({ cable, onChange }) {
-  const isACSR = cable.type === "ACSR";
-  const cableTypeOptions = Object.entries(CABLE_TYPES).map(([typeValue, typeLabel]) => [typeValue, typeLabel]);
-  const materials    = ["Cobre", "Aluminio"];
-  const conduitTypes = ["PVC", "Acero"];
-  const selectedMaterial = cable.material ?? "Cobre";
-  const selectedConduit  = cable.canal ?? "PVC";
-  const gauges = getGauges(cable.type, selectedMaterial, selectedConduit);
-
-  const updateCable = (patch) => {
-    const updatedCable = { ...cable, ...patch };
-    const availableGauges = getGauges(updatedCable.type, updatedCable.material ?? selectedMaterial, updatedCable.canal ?? selectedConduit);
-    if (!availableGauges.includes(String(updatedCable.gauge))) updatedCable.gauge = availableGauges[0] ?? updatedCable.gauge;
-    onChange(updatedCable);
-  };
-
-  const impedancePerKm = cable.enabled ? getZ(cable.type, cable.gauge, selectedMaterial, selectedConduit) : 0;
-  const totalImpedance = cable.enabled ? (impedancePerKm * (cable.len / 1000)) : 0;
-
-  return (
-    <div className="cable-frm">
-      <label className={`cable-frm__toggle${cable.enabled ? " cable-frm__toggle--open" : ""}`}>
-        <input type="checkbox" checked={cable.enabled} onChange={e => updateCable({ enabled: e.target.checked })} />
-        Incluir cable alimentador
-      </label>
-      {cable.enabled && <>
-        <div className={`cable-frm__grid${isACSR ? " cable-frm__grid--acsr" : ""}`}>
-          <FormField label="Tipo">
-            <SelectInput value={cable.type} onChange={v => updateCable({ type: v })} options={cableTypeOptions} />
-          </FormField>
-          {!isACSR && <FormField label="Material">
-            <SelectInput value={selectedMaterial} onChange={v => updateCable({ material: v })} options={materials.map(material => [material, material])} />
-          </FormField>}
-          {!isACSR && <FormField label="Canalización">
-            <SelectInput value={selectedConduit} onChange={v => updateCable({ canal: v })} options={conduitTypes.map(conduit => [conduit, conduit])} />
-          </FormField>}
-          <FormField label="Calibre">
-            <SelectInput value={String(cable.gauge)} onChange={v => updateCable({ gauge: v })}
-              options={gauges.map(gaugeValue => [String(gaugeValue), String(gaugeValue)])} />
-          </FormField>
-          <FormField label="Long (m)">
-            <FormInput value={cable.len} onChange={v => updateCable({ len: v })} min={1} step={1} />
-          </FormField>
-        </div>
-        <div className="cable-frm__info">
-          Z = {impedancePerKm.toFixed(4)} Ω/km × {cable.len}m = <strong>{totalImpedance.toFixed(4)} Ω</strong>
-          &nbsp;·&nbsp; R·fp + XL·sen(acos(fp))
-        </div>
-      </>}
-    </div>
-  );
-}
-
-/* ── RESUMEN DE PARÁMETROS — sub-componentes ───────────────── */
+/* ── RESUMEN DE PARÁMETROS ───────────────────────────────── */
 function SectionTitle({ children }) {
   return <div className="sec-title">{children}</div>;
 }
@@ -151,14 +68,14 @@ function ParameterSummary({ data, result }) {
             <SectionTitle>Acometida de Media Tensión</SectionTitle>
             <SummaryTable>
               <thead><tr>
-                {["Alimentador", "Calibre", "Material", "Longitud (m)", "Z (Ω)", "kVAsc"].map(header =>
-                  <th key={header} className="rp-th">{header}</th>)}
+                {["Alimentador", "Calibre", "Material", "Longitud (m)", "Z (Ω)", "kVAsc"].map(h =>
+                  <th key={h} className="rp-th">{h}</th>)}
               </tr></thead>
               <tbody>
                 <tr>
                   <td className="rp-td rp-td--bold">RED {data.grid.kV} kV</td>
                   <td className="rp-td">{firstSource.inCable.gauge}</td>
-                  <td className="rp-td">{firstSource.inCable.type === "ACSR" ? "Aluminio" : (firstSource.inCable.material ?? "Cobre")}</td>
+                  <td className="rp-td">{firstSource.inCable.material ?? "Cobre"}</td>
                   <td className="rp-td">{firstSource.inCable.len}</td>
                   <td className="rp-td">{(getZ(firstSource.inCable.type, firstSource.inCable.gauge, firstSource.inCable.material, firstSource.inCable.canal) * firstSource.inCable.len / 1000).toFixed(4)}</td>
                   <td className="rp-td rp-td--bold rp-td--blue">{firstSource.inCableKVAcc?.toFixed(2) ?? "—"}</td>
@@ -171,8 +88,8 @@ function ParameterSummary({ data, result }) {
         <SectionTitle>Fuentes de Alimentación</SectionTitle>
         <SummaryTable>
           <thead><tr>
-            {["Descrip.", "kVA", "Un (kV)", "Z% / X''d", "kVAeq"].map(header =>
-              <th key={header} className="rp-th">{header}</th>)}
+            {["Descrip.", "kVA", "Un (kV)", "Z% / X''d", "kVAeq"].map(h =>
+              <th key={h} className="rp-th">{h}</th>)}
           </tr></thead>
           <tbody>
             {srcResults.map(source => (
@@ -180,7 +97,7 @@ function ParameterSummary({ data, result }) {
                 <td className="rp-td rp-td--bold">{source.label}</td>
                 <td className="rp-td">{source.kVA}</td>
                 <td className="rp-td">{source.kVsec}</td>
-                <td className="rp-td">{source.type === "transformer" ? source.zPct : `X''=${source.xdpp}`}</td>
+                <td className="rp-td">{source.type === "transformer" ? `${source.zPct}%` : `X''=${source.xdpp}`}</td>
                 <td className="rp-td rp-td--bold rp-td--blue">{source.equipmentKVAcc.toFixed(2)}</td>
               </tr>
             ))}
@@ -192,14 +109,14 @@ function ParameterSummary({ data, result }) {
             <SectionTitle>Acometida de Baja Tensión</SectionTitle>
             <SummaryTable>
               <thead><tr>
-                {["Alimentador", "Calibre", "Material", "Longitud (m)", "Z (Ω)", "kVAsc"].map(header =>
-                  <th key={header} className="rp-th">{header}</th>)}
+                {["Alimentador", "Calibre", "Material", "Longitud (m)", "Z (Ω)", "kVAsc"].map(h =>
+                  <th key={h} className="rp-th">{h}</th>)}
               </tr></thead>
               <tbody>
                 <tr>
                   <td className="rp-td rp-td--bold">{firstSource.label} - TGA</td>
                   <td className="rp-td">{firstSource.outCable.gauge}</td>
-                  <td className="rp-td">{firstSource.outCable.type === "ACSR" ? "Aluminio" : (firstSource.outCable.material ?? "Cobre")}</td>
+                  <td className="rp-td">{firstSource.outCable.material ?? "Cobre"}</td>
                   <td className="rp-td">{firstSource.outCable.len}</td>
                   <td className="rp-td">{(getZ(firstSource.outCable.type, firstSource.outCable.gauge, firstSource.outCable.material, firstSource.outCable.canal) * firstSource.outCable.len / 1000).toFixed(4)}</td>
                   <td className="rp-td rp-td--bold rp-td--blue">{firstSource.outCableKVAcc?.toFixed(2) ?? "—"}</td>
@@ -209,20 +126,21 @@ function ParameterSummary({ data, result }) {
           </>
         )}
 
-        {loadResults.some(load => load.cable?.enabled) && (
+        {loadResults.some(l => l.cable?.enabled) && (
           <>
-            <SectionTitle>Alimentador de la Carga</SectionTitle>
+            <SectionTitle>Alimentadores de Carga</SectionTitle>
             <SummaryTable>
               <thead><tr>
-                {["Alimentador", "Calibre", "Material", "Longitud (m)", "Z (Ω)", "kVAsc"].map(header =>
-                  <th key={header} className="rp-th">{header}</th>)}
+                {["Circ.", "Alimentador", "Calibre", "Material", "Long (m)", "Z (Ω)", "kVAsc"].map(h =>
+                  <th key={h} className="rp-th">{h}</th>)}
               </tr></thead>
               <tbody>
-                {loadResults.filter(load => load.cable?.enabled).map(load => (
+                {loadResults.filter(l => l.cable?.enabled).map(load => (
                   <tr key={load.id}>
+                    <td className="rp-td rp-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
                     <td className="rp-td rp-td--bold">TGA - {load.label}</td>
                     <td className="rp-td">{load.cable.gauge}</td>
-                    <td className="rp-td">{load.cable.type === "ACSR" ? "Aluminio" : (load.cable.material ?? "Cobre")}</td>
+                    <td className="rp-td">{load.cable.material ?? "Cobre"}</td>
                     <td className="rp-td">{load.cable.len}</td>
                     <td className="rp-td">{(getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal) * load.cable.len / 1000).toFixed(4)}</td>
                     <td className="rp-td rp-td--bold rp-td--blue">{load.cableKVAcc?.toFixed(2) ?? "—"}</td>
@@ -233,44 +151,57 @@ function ParameterSummary({ data, result }) {
           </>
         )}
 
-        {loadResults.some(l => l.loadType === "motor") && <>
-          <SectionTitle>Cargas Inductivas</SectionTitle>
-          <SummaryTable>
-            <thead><tr>
-              {["ID", "Descrip.", "HP", "X''", "kVAsc"].map(header =>
-                <th key={header} className="rp-th">{header}</th>)}
-            </tr></thead>
-            <tbody>
-              {loadResults.filter(l => l.loadType === "motor").map((load, loadIndex) => (
-                <tr key={load.id} className={loadIndex % 2 ? "rp-tr--odd" : ""}>
-                  <td className="rp-td">{load.id}</td>
-                  <td className="rp-td rp-td--bold">{load.label}</td>
-                  <td className="rp-td">{load.hp}</td>
-                  <td className="rp-td rp-td--amber">{load.xdpp.toFixed(3)}</td>
-                  <td className="rp-td rp-td--bold rp-td--blue">{load.motorKVAcc.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </SummaryTable>
-        </>}
-        {loadResults.some(l => l.loadType === "resistive") && <>
-          <SectionTitle>Cargas Resistivas</SectionTitle>
-          <SummaryTable>
-            <thead><tr>
-              {["ID", "Descrip.", "kVAcc conductor"].map(header =>
-                <th key={header} className="rp-th">{header}</th>)}
-            </tr></thead>
-            <tbody>
-              {loadResults.filter(l => l.loadType === "resistive").map((load, loadIndex) => (
-                <tr key={load.id} className={loadIndex % 2 ? "rp-tr--odd" : ""}>
-                  <td className="rp-td">{load.id}</td>
-                  <td className="rp-td rp-td--bold">{load.label}</td>
-                  <td className="rp-td rp-td--bold rp-td--amber">{load.cableKVAcc?.toFixed(2) ?? "—"} kVA</td>
-                </tr>
-              ))}
-            </tbody>
-          </SummaryTable>
-        </>}
+        {loadResults.some(l => l.loadType === "motor") && (
+          <>
+            <SectionTitle>Cargas Inductivas (Motores)</SectionTitle>
+            <SummaryTable>
+              <thead><tr>
+                {["Circ.", "Tipo", "Descrip.", "Fase", "V (V)", "Carga (VA)", "HP", "X''", "kVAsc"].map(h =>
+                  <th key={h} className="rp-th">{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {loadResults.filter(l => l.loadType === "motor").map((load, i) => (
+                  <tr key={load.id} className={i % 2 ? "rp-tr--odd" : ""}>
+                    <td className="rp-td rp-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
+                    <td className="rp-td rp-td--amber">{load.circuitLoadType}</td>
+                    <td className="rp-td rp-td--bold">{load.label}</td>
+                    <td className="rp-td">{load.circuitPhase}</td>
+                    <td className="rp-td">{load.voltageKV * 1000}</td>
+                    <td className="rp-td">{load.loadVA}</td>
+                    <td className="rp-td rp-td--green">{load.hp.toFixed(2)}</td>
+                    <td className="rp-td rp-td--amber">{load.xdpp?.toFixed(3)}</td>
+                    <td className="rp-td rp-td--bold rp-td--blue">{load.motorKVAcc?.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </SummaryTable>
+          </>
+        )}
+
+        {loadResults.some(l => l.loadType === "resistive") && (
+          <>
+            <SectionTitle>Cargas Resistivas</SectionTitle>
+            <SummaryTable>
+              <thead><tr>
+                {["Circ.", "Tipo", "Descrip.", "Fase", "V (V)", "Carga (VA)", "kVAcc conductor"].map(h =>
+                  <th key={h} className="rp-th">{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {loadResults.filter(l => l.loadType === "resistive").map((load, i) => (
+                  <tr key={load.id} className={i % 2 ? "rp-tr--odd" : ""}>
+                    <td className="rp-td rp-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
+                    <td className="rp-td rp-td--amber">{load.circuitLoadType}</td>
+                    <td className="rp-td rp-td--bold">{load.label}</td>
+                    <td className="rp-td">{load.circuitPhase}</td>
+                    <td className="rp-td">{load.voltageKV * 1000}</td>
+                    <td className="rp-td">{load.loadVA}</td>
+                    <td className="rp-td rp-td--bold rp-td--amber">{load.cableKVAcc?.toFixed(2) ?? "—"} kVA</td>
+                  </tr>
+                ))}
+              </tbody>
+            </SummaryTable>
+          </>
+        )}
 
       </div>
     </div>
@@ -282,147 +213,41 @@ function ParameterSummary({ data, result }) {
 ══════════════════════════════════════════════════════════════ */
 export default function App() {
   const {
-    data, view, setView, result, canvasRef,
-    updateField, addSource, removeSource, addLoad, removeLoad, calculate,
+    jsonText, setJsonText, jsonError,
+    data, view, setView,
+    result, canvasRef,
+    parseAndCalculate,
   } = useIccCalc();
 
-  /* ═══ FORM ═══ */
-  if (view === "form") return (
+  /* ═══ JSON INPUT ═══ */
+  if (view === "json") return (
     <div className="app">
       <div className="topbar">
         <div className="topbar__title">⚡ Cálculo de Cortocircuito</div>
         <div className="topbar__sub">Método de los kVA Equivalentes</div>
       </div>
 
-      <div className="form-content">
-
-        {/* STEP 1 – GRID */}
+      <div className="json-content">
         <Card>
-          <SectionHeader number="1" title="Fuente de Red" sub="Datos de la corriente de falla disponible desde la compañía distribuidora" />
-          <div className="grid-params">
-            <FormField label="Tensión de red (kV)"><FormInput value={data.grid.kV}    onChange={v => updateField("grid.kV",    v)} min={0.1} step={0.1} /></FormField>
-            <FormField label="Icc (kA)">            <FormInput value={data.grid.Icc}   onChange={v => updateField("grid.Icc",   v)} min={0}   step={0.1} placeholder="0" /></FormField>
-            <FormField label="kVAcc directo (kVA)"> <FormInput value={data.grid.kVAcc} onChange={v => updateField("grid.kVAcc", v)} min={0}   step={100} /></FormField>
-          </div>
-          <div className="grid-tip">
-            💡 Icc en <strong>kA</strong>. Internamente: √3 × kV × Icc(kA)×1000 A = kVA.
-            Ej: √3 × 13.2 kV × 10,000 A = 228,624 kVA. Si se ingresa kVAcc directamente, tiene prioridad.
-          </div>
-        </Card>
-
-        {/* STEP 2 – SOURCES */}
-        <Card>
-          <div className="section-header">
-            <SectionHeader number="2" title="Fuentes de Alimentación" sub="Transformadores y/o generadores que alimentan la barra principal de BT" />
-            <button onClick={addSource} className="btn-add">+ Fuente</button>
-          </div>
-          <div className="sources-list">
-            {data.sources.map((source, sourceIndex) => (
-              <div key={source.id} className="src-card">
-                <div className="src-card__header">
-                  <div className="src-card__header-left">
-                    <span className={`src-badge src-badge--${source.type === "transformer" ? "trafo" : "gen"}`}>
-                      {source.type === "transformer" ? "TRANSFORMADOR" : "GENERADOR"}
-                    </span>
-                    <input
-                      value={source.label}
-                      onChange={e => updateField(`sources.${sourceIndex}.label`, e.target.value)}
-                      className="label-input"
-                    />
-                  </div>
-                  <div className="src-card__header-right">
-                    {["transformer", "generator"].map(sourceType => (
-                      <label key={sourceType} className="radio-label">
-                        <input type="radio" name={`tp-${source.id}`} value={sourceType} checked={source.type === sourceType}
-                          onChange={() => {
-                            updateField(`sources.${sourceIndex}.type`, sourceType);
-                            if (sourceType === "generator" && source.label.startsWith("Trafo"))
-                              updateField(`sources.${sourceIndex}.label`, `GEN ${source.id}`);
-                            if (sourceType === "transformer" && source.label.startsWith("GEN"))
-                              updateField(`sources.${sourceIndex}.label`, `Trafo ${source.id}`);
-                          }} />
-                        {sourceType === "transformer" ? "Trafo" : "Generador"}
-                      </label>
-                    ))}
-                    {data.sources.length > 1 && (
-                      <button onClick={() => removeSource(source.id)} className="btn-remove">✕</button>
-                    )}
-                  </div>
-                </div>
-                <div className="src-params-grid">
-                  <FormField label="Potencia (kVA)"><FormInput value={source.kVA} onChange={v => updateField(`sources.${sourceIndex}.kVA`, v)} min={1} step={25} /></FormField>
-                  {source.type === "transformer" && <>
-                    <FormField label="%Z impedancia">
-                      <FormInput value={source.zPct} onChange={v => updateField(`sources.${sourceIndex}.zPct`, v)} min={0.01} step={0.01} />
-                    </FormField>
-                    <FormField label="Tensión primaria (kV)"><FormInput value={source.kVpri} onChange={v => updateField(`sources.${sourceIndex}.kVpri`, v)} min={0.1} step={0.1} /></FormField>
-                  </>}
-                  <FormField label="Tensión secundaria (kV)"><FormInput value={source.kVsec} onChange={v => updateField(`sources.${sourceIndex}.kVsec`, v)} min={0.001} step={0.001} /></FormField>
-                </div>
-                <div className="src-cables-grid">
-                  {source.type === "transformer" && (
-                    <div>
-                      <div className="cable-section-label">Cable de entrada (MT → fuente)</div>
-                      <CableForm cable={source.inCable} onChange={c => updateField(`sources.${sourceIndex}.inCable`, c)} />
-                    </div>
-                  )}
-                  <div>
-                    <div className="cable-section-label">Cable de salida (fuente → barra BT)</div>
-                    <CableForm cable={source.outCable} onChange={c => updateField(`sources.${sourceIndex}.outCable`, c)} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* STEP 3 – LOADS */}
-        <Card>
-          <div className="section-header">
-            <SectionHeader number="3" title="Cargas"
-              sub="Motores y cargas resistivas conectados a la barra." />
-            <div className="btn-add-group">
-              <button onClick={() => addLoad("motor")} className="btn-add btn-add--green">+ Motor</button>
-              <button onClick={() => addLoad("resistive")} className="btn-add btn-add--amber">+ Resistiva</button>
+          <SectionHeader
+            number="1"
+            title="Datos del Proyecto Eléctrico"
+            sub="Pegue el JSON generado por el sistema de diseño eléctrico. Las cargas activas se derivan automáticamente de los circuitos."
+          />
+          <textarea
+            className="json-area"
+            value={jsonText}
+            onChange={e => setJsonText(e.target.value)}
+            spellCheck={false}
+          />
+          {jsonError && (
+            <div className="json-error">
+              <strong>Error al parsear JSON:</strong> {jsonError}
             </div>
-          </div>
-          <div className="loads-grid">
-            {data.loads.map((load, loadIndex) => (
-              <div key={load.id} className={`load-card${load.loadType === "resistive" ? " load-card--resistive" : ""}`}>
-                <div className="load-card__header">
-                  <div className="load-card__header-left">
-                    <div className="load-num">{loadIndex + 1}</div>
-                    <span className={`load-badge load-badge--${load.loadType}`}>
-                      {load.loadType === "motor" ? "MOTOR" : "RESISTIVA"}
-                    </span>
-                    <input
-                      value={load.label}
-                      onChange={e => updateField(`loads.${loadIndex}.label`, e.target.value)}
-                      className="load-label-input"
-                    />
-                  </div>
-                  {data.loads.length > 1 && (
-                    <button onClick={() => removeLoad(load.id)} className="btn-remove-x">✕</button>
-                  )}
-                </div>
-                {load.loadType === "motor" && (
-                  <div className="load-params-grid">
-                    <FormField label="Potencia (HP)"><FormInput value={load.hp} onChange={v => updateField(`loads.${loadIndex}.hp`, v)} min={0.5} step={0.5} /></FormField>
-                    <div className="xdpp-display">
-                      <div className="xdpp-display__label">X''d automático</div>
-                      <div className="xdpp-display__value">{load.hp >= 50 ? "0.17" : "0.20"}</div>
-                      <div className="xdpp-display__hint">{load.hp >= 50 ? "Motor ≥ 50 hp" : "Motor < 50 hp"}</div>
-                    </div>
-                  </div>
-                )}
-                <CableForm cable={load.cable} onChange={c => updateField(`loads.${loadIndex}.cable`, c)} />
-              </div>
-            ))}
-          </div>
+          )}
         </Card>
 
-        {/* CALCULATE BTN */}
-        <button onClick={calculate} className="btn-calc">
+        <button onClick={parseAndCalculate} className="btn-calc">
           ⚡ Calcular y Ver Diagrama Unifilar →
         </button>
       </div>
@@ -441,18 +266,18 @@ export default function App() {
       <div className="res-topbar">
         <div>
           <div className="res-topbar__title">⚡ Diagrama de kVA's de Cortocircuito</div>
-          <div className="res-topbar__sub">Barra {busVoltageKV} kV — Método kVA Equivalentes</div>
+          <div className="res-topbar__sub">Barra {busVoltageKV * 1000} V — Método kVA Equivalentes</div>
         </div>
-        <button onClick={() => setView("form")} className="btn-back">← Editar</button>
+        <button onClick={() => setView("json")} className="btn-back">← Editar JSON</button>
       </div>
 
       {/* KPI strip */}
       <div className="kpi-strip">
         {[
-          { label: "kVAcc Total en Barra", value: formatNumber(busKVAcc, 1) + " kVA",                         color: "amber", sub: "Σ upstream + downstream" },
-          { label: "Icc Simétrica",        value: formatNumber(symmetricShortCircuitCurrent, 0) + " A",        color: "blue",  sub: `${busVoltageKV} kV` },
-          { label: "Icc Asimétrica",       value: formatNumber(asymmetricShortCircuitCurrent, 0) + " A",       color: "red",   sub: `Factor ×${asymmetricFactor}` },
-          { label: "Contrib. Motores",     value: formatNumber(downstreamKVAcc, 1) + " kVA",                   color: "green", sub: "Aguas abajo" },
+          { label: "kVAcc Total en Barra", value: formatNumber(busKVAcc, 1) + " kVA",                        color: "amber", sub: "Σ upstream + downstream" },
+          { label: "Icc Simétrica",        value: formatNumber(symmetricShortCircuitCurrent, 0) + " A",       color: "blue",  sub: `${busVoltageKV * 1000} V` },
+          { label: "Icc Asimétrica",       value: formatNumber(asymmetricShortCircuitCurrent, 0) + " A",      color: "red",   sub: `Factor ×${asymmetricFactor}` },
+          { label: "Contrib. Motores",     value: formatNumber(downstreamKVAcc, 1) + " kVA",                  color: "green", sub: "Aguas abajo" },
         ].map(({ label, value, color, sub }) => (
           <div key={label} className={`kpi-item kpi-item--${color}`}>
             <div className="kpi-item__label">{label}</div>
@@ -476,7 +301,7 @@ export default function App() {
           <div className="table-overflow">
             <table className="res-table">
               <thead><tr>
-                {["Fuente", "kVAcc fuente", "kVAcc pasante", "kVAcc a barra"].map(header => <th key={header} className="res-th">{header}</th>)}
+                {["Fuente", "kVAcc fuente", "kVAcc pasante", "kVAcc a barra"].map(h => <th key={h} className="res-th">{h}</th>)}
               </tr></thead>
               <tbody>
                 <tr>
@@ -508,24 +333,30 @@ export default function App() {
             <div className="table-overflow">
               <table className="res-table">
                 <thead><tr>
-                  {["Motor", "HP", "X''d", "kVAcc motor", "kVAcc cable", "kVAcc a barra", "Icc (A)"].map(header => <th key={header} className="res-th">{header}</th>)}
+                  {["Circ.", "Tipo", "Motor", "V (V)", "HP", "X''d", "kVAcc motor", "kVAcc cable", "kVAcc a barra", "Icc (A)"].map(h => <th key={h} className="res-th">{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {loadResults.filter(l => l.loadType === "motor").map((load, loadIndex) => (
-                    <tr key={load.id} className={loadIndex % 2 ? "res-tr--striped" : ""}>
-                      <td className="res-td res-td--dark res-td--bold">{load.label}</td>
-                      <td className="res-td">{load.hp}</td>
-                      <td className="res-td res-td--amber">{load.xdpp}</td>
-                      <td className="res-td res-td--mono">{formatNumber(load.motorKVAcc, 1)}</td>
-                      <td className={`res-td res-td--mono${load.cableKVAcc ? "" : " res-td--light"}`}>
-                        {load.cableKVAcc ? formatNumber(load.cableKVAcc, 1) : "—"}
-                      </td>
-                      <td className="res-td res-td--green res-td--bold res-td--mono">{formatNumber(load.kVAccContributionToBus, 2)}</td>
-                      <td className="res-td res-td--mono">{formatNumber(load.kVAccContributionToBus / (Math.sqrt(3) * busVoltageKV), 1)}</td>
-                    </tr>
-                  ))}
+                  {loadResults.filter(l => l.loadType === "motor").map((load, i) => {
+                    const loadVoltageKV = load.voltageKV ?? busVoltageKV;
+                    return (
+                      <tr key={load.id} className={i % 2 ? "res-tr--striped" : ""}>
+                        <td className="res-td res-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
+                        <td className="res-td res-td--amber">{load.circuitLoadType}</td>
+                        <td className="res-td res-td--dark res-td--bold">{load.label}</td>
+                        <td className="res-td">{load.voltageKV * 1000}</td>
+                        <td className="res-td">{load.hp.toFixed(2)}</td>
+                        <td className="res-td res-td--amber">{load.xdpp}</td>
+                        <td className="res-td res-td--mono">{formatNumber(load.motorKVAcc, 1)}</td>
+                        <td className={`res-td res-td--mono${load.cableKVAcc ? "" : " res-td--light"}`}>
+                          {load.cableKVAcc ? formatNumber(load.cableKVAcc, 1) : "—"}
+                        </td>
+                        <td className="res-td res-td--green res-td--bold res-td--mono">{formatNumber(load.kVAccContributionToBus, 2)}</td>
+                        <td className="res-td res-td--mono">{formatNumber(load.kVAccContributionToBus / (Math.sqrt(3) * loadVoltageKV), 1)}</td>
+                      </tr>
+                    );
+                  })}
                   <tr className="res-tr--total-green">
-                    <td className="res-td res-td--green res-td--bold" colSpan={5}>Total aguas abajo</td>
+                    <td className="res-td res-td--green res-td--bold" colSpan={8}>Total aguas abajo</td>
                     <td className="res-td res-td--green res-td--bold res-td--mono res-td--lg">{formatNumber(downstreamKVAcc, 1)} kVA</td>
                     <td></td>
                   </tr>
@@ -534,25 +365,31 @@ export default function App() {
             </div>
           </Card>
         )}
+
         {loadResults.some(l => l.loadType === "resistive") && (
           <Card>
             <div className="card-section-label">Cargas Resistivas — kVAcc Disponible en Terminal</div>
             <div className="table-overflow">
               <table className="res-table">
                 <thead><tr>
-                  {["Carga", "kVAcc conductor", "kVAcc en terminal", "Icc terminal (A)"].map(header => <th key={header} className="res-th">{header}</th>)}
+                  {["Circ.", "Tipo", "Carga", "V (V)", "kVAcc conductor", "kVAcc en terminal", "Icc terminal (A)"].map(h => <th key={h} className="res-th">{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {loadResults.filter(l => l.loadType === "resistive").map((load, loadIndex) => {
-                    const terminalKVAcc = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
+                  {loadResults.filter(l => l.loadType === "resistive").map((load, i) => {
+                    const loadVoltageKV  = load.voltageKV ?? busVoltageKV;
+                    const terminalKVAcc  = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
+                    const terminalIcc    = terminalKVAcc / (Math.sqrt(3) * loadVoltageKV);
                     return (
-                      <tr key={load.id} className={loadIndex % 2 ? "res-tr--striped" : ""}>
+                      <tr key={load.id} className={i % 2 ? "res-tr--striped" : ""}>
+                        <td className="res-td res-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
+                        <td className="res-td res-td--amber">{load.circuitLoadType}</td>
                         <td className="res-td res-td--dark res-td--bold">{load.label}</td>
+                        <td className="res-td">{load.voltageKV * 1000}</td>
                         <td className={`res-td res-td--mono${load.cableKVAcc ? "" : " res-td--light"}`}>
                           {load.cableKVAcc ? formatNumber(load.cableKVAcc, 1) : "—"}
                         </td>
                         <td className="res-td res-td--amber res-td--bold res-td--mono">{formatNumber(terminalKVAcc, 1)} kVA</td>
-                        <td className="res-td res-td--mono">{formatNumber(terminalKVAcc / (Math.sqrt(3) * busVoltageKV), 1)} A</td>
+                        <td className="res-td res-td--mono">{formatNumber(terminalIcc, 1)} A</td>
                       </tr>
                     );
                   })}
@@ -578,10 +415,10 @@ export default function App() {
             ))}
           </div>
           <div>
-            <div className="summary-section__title">Corrientes — Barra {busVoltageKV} kV</div>
+            <div className="summary-section__title">Corrientes — Barra {busVoltageKV * 1000} V</div>
             {[
-              { label: "Icc simétrica",                          value: symmetricShortCircuitCurrent,  color: "blue", unit: "A" },
-              { label: `Icc asimétrica ×${asymmetricFactor}`,    value: asymmetricShortCircuitCurrent, color: "red",  unit: "A" },
+              { label: "Icc simétrica",                         value: symmetricShortCircuitCurrent,  color: "blue", unit: "A" },
+              { label: `Icc asimétrica ×${asymmetricFactor}`,   value: asymmetricShortCircuitCurrent, color: "red",  unit: "A" },
             ].map(({ label, value, color, unit }) => (
               <div key={label} className="summary-row">
                 <span className="summary-row__label">{label}</span>
@@ -589,7 +426,7 @@ export default function App() {
               </div>
             ))}
             <div className="formula-box">
-              Fórmula: Icc = kVAcc / (√3 × {busVoltageKV} kV)<br />
+              Fórmula: Icc = kVAcc / (√3 × {busVoltageKV * 1000} V)<br />
               Factor asimétrico: {asymmetricFactor} {busVoltageKV < 0.6 ? "(sistema ≤600V)" : "(sistema >600V)"}
             </div>
           </div>

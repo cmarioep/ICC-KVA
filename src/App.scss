@@ -901,3 +901,54 @@ $c-border-input: #cbd5e1;
   line-height: 1.7;
   border: 1px solid $c-border;
 }
+
+// ── JSON input view ───────────────────────────────────────────
+
+.json-content {
+  width: 65vw;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.json-area {
+  width: 100%;
+  min-height: 480px;
+  background: $bg-surface;
+  border: 1px solid $c-border-input;
+  border-radius: 8px;
+  color: $c-dark;
+  font-size: 12px;
+  font-family: $font-mono;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  resize: vertical;
+  outline: none;
+  line-height: 1.55;
+  display: block;
+  margin-top: 14px;
+
+  &:focus {
+    border-color: $c-blue;
+    background: $bg-white;
+  }
+}
+
+.json-error {
+  margin-top: 10px;
+  padding: 9px 12px;
+  background: #fef2f2;
+  border: 1px solid $c-red-border;
+  border-radius: 6px;
+  color: $c-red;
+  font-size: 12px;
+  font-family: $font-mono;
+  line-height: 1.5;
+
+  strong {
+    font-weight: 700;
+  }
+}
