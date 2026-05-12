@@ -10,8 +10,8 @@ const DEFAULT_JSON = JSON.stringify({
     feeder: { type: "MT15", material: "Cobre", conduit: "PVC", awg: "1/0", long: 50 },
   },
   transformador: {
-    kva: 150,
-    feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: 50 },
+    kva: 630,
+    feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 500, long: 50 },
   },
   generator: {
     kva: null,
@@ -19,34 +19,14 @@ const DEFAULT_JSON = JSON.stringify({
   },
   circuits: [
     {
-      active: true, name: "Reserva", loadType: "Normal", type: "monofasico",
-      voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "15",
+      active: true, name: "Bomba", loadType: "Motor", type: "monofasico",
+      voltage: 208, load: "2486.67", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
       circuitNumber: 1, circuitNumbers: [1],
     },
     {
-      active: true, name: "Reserva", loadType: "Motor", type: "bifasico",
-      voltage: 208, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "20",
-      circuitNumber: 2, circuitNumbers: [2, 4],
-    },
-    {
-      active: true, name: "Reserva", loadType: "Especial", type: "monofasico",
-      voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "20",
+      active: true, name: "General", loadType: "Iluminacion", type: "monofasico",
+      voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
       circuitNumber: 3, circuitNumbers: [3],
-    },
-    {
-      active: false, name: "Reserva", loadType: "", type: "",
-      voltage: "", load: "", awgType: "BT600", material: "Cobre", conduit: "", awg: "", long: "",
-      circuitNumber: 4, circuitNumbers: [4],
-    },
-    {
-      active: true, name: "Reserva", loadType: "Normal", type: "monofasico",
-      voltage: 120, load: "800", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "35",
-      circuitNumber: 5, circuitNumbers: [5],
-    },
-    {
-      active: true, name: "Reserva", loadType: "Iluminación", type: "monofasico",
-      voltage: 120, load: "800", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 12, long: "25",
-      circuitNumber: 6, circuitNumbers: [6],
     },
   ],
 }, null, 2);
