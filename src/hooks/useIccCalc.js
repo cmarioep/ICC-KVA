@@ -12,8 +12,13 @@ const createDefaultSource = (id) => ({
   inCable: createDefaultCable(), outCable: createDefaultCable(),
 });
 
-const createDefaultLoad = (id) => ({
-  id, label: `Motor ${id}`, hp: 50,
+const createDefaultMotorLoad = (id) => ({
+  id, loadType: "motor", label: `Motor ${id}`, hp: 50,
+  cable: { enabled: true, type: "BT600", gauge: "2/0", material: "Cobre", canal: "PVC", len: 50 },
+});
+
+const createDefaultResistiveLoad = (id) => ({
+  id, loadType: "resistive", label: `Carga R ${id}`,
   cable: { enabled: true, type: "BT600", gauge: "2/0", material: "Cobre", canal: "PVC", len: 50 },
 });
 
@@ -35,11 +40,11 @@ const createInitialData = () => ({
   ],
   loads: [
     {
-      id: 1, label: "BOMBA", hp: 3,
+      id: 1, loadType: "motor", label: "BOMBA", hp: 3,
       cable: { enabled: true, type: "BT600", gauge: "8", material: "Cobre", canal: "PVC", len: 25 },
     },
     {
-      id: 2, label: "BOMBA", hp: 3,
+      id: 2, loadType: "motor", label: "BOMBA", hp: 3,
       cable: { enabled: true, type: "BT600", gauge: "8", material: "Cobre", canal: "PVC", len: 25 },
     },
   ],
@@ -86,12 +91,19 @@ function runCalc(data) {
   // Generators are local sources — their bus contribution is downstream, like motors
   let downstreamKVAcc = generatorBusKVAcc;
   const loadResults = loads.map(load => {
+    if (load.loadType === "resistive") {
+      let cableKVAcc = null;
+      if (load.cable.enabled) {
+        cableKVAcc = cableKVA(busVoltageKV, getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal), load.cable.len);
+      }
+      return { ...load, cableKVAcc, kVAccContributionToBus: 0, motorKVAcc: null, xdpp: null };
+    }
     const xdpp         = load.hp >= 50 ? 0.17 : 0.20;
     const motorKVAcc   = load.hp / xdpp;
     let kVAccContributionToBus = motorKVAcc, cableKVAcc = null;
     if (load.cable.enabled) {
-      cableKVAcc              = cableKVA(busVoltageKV, getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal), load.cable.len);
-      kVAccContributionToBus  = series(motorKVAcc, cableKVAcc);
+      cableKVAcc             = cableKVA(busVoltageKV, getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal), load.cable.len);
+      kVAccContributionToBus = series(motorKVAcc, cableKVAcc);
     }
     downstreamKVAcc += kVAccContributionToBus;
     return { ...load, xdpp, motorKVAcc, cableKVAcc, kVAccContributionToBus };
@@ -135,7 +147,7 @@ export function useIccCalc() {
 
   const addSource    = () => setData(prevData => ({ ...prevData, sources: [...prevData.sources, createDefaultSource(prevData.sources.length + 1)] }));
   const removeSource = (id) => setData(prevData => ({ ...prevData, sources: prevData.sources.filter(source => source.id !== id) }));
-  const addLoad      = () => setData(prevData => ({ ...prevData, loads: [...prevData.loads, createDefaultLoad(prevData.loads.length + 1)] }));
+  const addLoad      = (type = "motor") => setData(prevData => ({ ...prevData, loads: [...prevData.loads, type === "resistive" ? createDefaultResistiveLoad(prevData.loads.length + 1) : createDefaultMotorLoad(prevData.loads.length + 1)] }));
   const removeLoad   = (id) => setData(prevData => ({ ...prevData, loads: prevData.loads.filter(load => load.id !== id) }));
 
   const calculate = () => {

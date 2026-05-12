@@ -138,6 +138,17 @@ export function drawDiagram(canvas, data, results) {
     ctx.strokeStyle = "#555"; ctx.lineWidth = 1.5; ctx.stroke();
   }
 
+  // Amber rectangle with "R" label — resistive load
+  function drawResistiveLoadSymbol(centerX, centerY, label) {
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#fffbeb";
+    ctx.fillRect(centerX - 22, centerY - 14, 44, 28);
+    ctx.strokeStyle = "#b45309"; ctx.lineWidth = 2;
+    ctx.strokeRect(centerX - 22, centerY - 14, 44, 28);
+    drawText("R", centerX, centerY + 5, 13, "#b45309", "center", true);
+    drawText(label, centerX, centerY + 38, 10, "#111", "center", true);
+  }
+
   // Plain white circle with bold label below
   function drawLoadSymbol(centerX, centerY, label) {
     ctx.setLineDash([]);
@@ -334,6 +345,37 @@ export function drawDiagram(canvas, data, results) {
     const loadCenterX = firstLoadCenterX + loadIndex * loadSpacing;
 
     const upstreamKVAatBus = upstreamKVAcc;
+
+    if (load.loadType === "resistive") {
+      const lineStartY = currentY + 4;
+      let cableBoxY = null;
+      if (load.cable?.enabled && load.cableKVAcc) {
+        cableBoxY = lineStartY + SEGMENT_LENGTH + 11;
+      }
+      const symbolCenterY = cableBoxY
+        ? cableBoxY + 11 + SEGMENT_LENGTH + 24
+        : lineStartY + SEGMENT_LENGTH + 24;
+
+      const terminalKVAcc = load.cableKVAcc
+        ? series(upstreamKVAatBus, load.cableKVAcc)
+        : upstreamKVAatBus;
+      const iccAtTerminal = terminalKVAcc / (Math.sqrt(3) * busVoltageKV);
+
+      const labelTexts = cableBoxY
+        ? [upstreamKVAatBus.toFixed(2) + " kVA", terminalKVAcc.toFixed(2) + " kVA", "(" + load.cableKVAcc.toFixed(2) + " kVA)"]
+        : [terminalKVAcc.toFixed(2) + " kVA"];
+      const textStartX = computeSectionTextStartX(loadCenterX, labelTexts);
+
+      drawVerticalLine(loadCenterX, lineStartY, symbolCenterY);
+      drawText(upstreamKVAatBus.toFixed(2) + " kVA", textStartX, lineStartY + 14, 10, "#111");
+      if (cableBoxY !== null) {
+        drawImpedanceBox(loadCenterX, cableBoxY, load.cableKVAcc.toFixed(2), textStartX);
+        drawText(terminalKVAcc.toFixed(2) + " kVA", textStartX, cableBoxY + 22, 10, "#555");
+      }
+      drawResistiveLoadSymbol(loadCenterX, symbolCenterY, load.label);
+      drawText(`Icc: ${iccAtTerminal.toFixed(2)} A`, loadCenterX, symbolCenterY + 52, 10, "#333", "center");
+      return;
+    }
 
     // Collect every label text in this branch for consistent left edge
     const loadLabelTexts = [

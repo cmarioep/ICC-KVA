@@ -1,6 +1,6 @@
 import "./App.scss";
 import { CABLE_TYPES } from "./utils/cableParams";
-import { getZ, getGauges } from "./utils/cableUtils";
+import { getZ, getGauges, series } from "./utils/cableUtils";
 import { formatNumber } from "./utils/format";
 import { useIccCalc } from "./hooks/useIccCalc";
 
@@ -233,24 +233,44 @@ function ParameterSummary({ data, result }) {
           </>
         )}
 
-        <SectionTitle>Cargas Inductivas</SectionTitle>
-        <SummaryTable>
-          <thead><tr>
-            {["ID", "Descrip.", "HP", "X''", "kVAsc"].map(header =>
-              <th key={header} className="rp-th">{header}</th>)}
-          </tr></thead>
-          <tbody>
-            {loadResults.map((load, loadIndex) => (
-              <tr key={load.id} className={loadIndex % 2 ? "rp-tr--odd" : ""}>
-                <td className="rp-td">{load.id}</td>
-                <td className="rp-td rp-td--bold">{load.label}</td>
-                <td className="rp-td">{load.hp}</td>
-                <td className="rp-td rp-td--amber">{load.xdpp.toFixed(3)}</td>
-                <td className="rp-td rp-td--bold rp-td--blue">{load.motorKVAcc.toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </SummaryTable>
+        {loadResults.some(l => l.loadType === "motor") && <>
+          <SectionTitle>Cargas Inductivas</SectionTitle>
+          <SummaryTable>
+            <thead><tr>
+              {["ID", "Descrip.", "HP", "X''", "kVAsc"].map(header =>
+                <th key={header} className="rp-th">{header}</th>)}
+            </tr></thead>
+            <tbody>
+              {loadResults.filter(l => l.loadType === "motor").map((load, loadIndex) => (
+                <tr key={load.id} className={loadIndex % 2 ? "rp-tr--odd" : ""}>
+                  <td className="rp-td">{load.id}</td>
+                  <td className="rp-td rp-td--bold">{load.label}</td>
+                  <td className="rp-td">{load.hp}</td>
+                  <td className="rp-td rp-td--amber">{load.xdpp.toFixed(3)}</td>
+                  <td className="rp-td rp-td--bold rp-td--blue">{load.motorKVAcc.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </SummaryTable>
+        </>}
+        {loadResults.some(l => l.loadType === "resistive") && <>
+          <SectionTitle>Cargas Resistivas</SectionTitle>
+          <SummaryTable>
+            <thead><tr>
+              {["ID", "Descrip.", "kVAcc conductor"].map(header =>
+                <th key={header} className="rp-th">{header}</th>)}
+            </tr></thead>
+            <tbody>
+              {loadResults.filter(l => l.loadType === "resistive").map((load, loadIndex) => (
+                <tr key={load.id} className={loadIndex % 2 ? "rp-tr--odd" : ""}>
+                  <td className="rp-td">{load.id}</td>
+                  <td className="rp-td rp-td--bold">{load.label}</td>
+                  <td className="rp-td rp-td--bold rp-td--amber">{load.cableKVAcc?.toFixed(2) ?? "—"} kVA</td>
+                </tr>
+              ))}
+            </tbody>
+          </SummaryTable>
+        </>}
 
       </div>
     </div>
@@ -359,16 +379,22 @@ export default function App() {
         {/* STEP 3 – LOADS */}
         <Card>
           <div className="section-header">
-            <SectionHeader number="3" title="Cargas Inductivas (Motores)"
-              sub="Motores de inducción conectados a la barra. Contribuyen aguas abajo al cortocircuito." />
-            <button onClick={addLoad} className="btn-add btn-add--green">+ Motor</button>
+            <SectionHeader number="3" title="Cargas"
+              sub="Motores y cargas resistivas conectados a la barra." />
+            <div className="btn-add-group">
+              <button onClick={() => addLoad("motor")} className="btn-add btn-add--green">+ Motor</button>
+              <button onClick={() => addLoad("resistive")} className="btn-add btn-add--amber">+ Resistiva</button>
+            </div>
           </div>
           <div className="loads-grid">
             {data.loads.map((load, loadIndex) => (
-              <div key={load.id} className="load-card">
+              <div key={load.id} className={`load-card${load.loadType === "resistive" ? " load-card--resistive" : ""}`}>
                 <div className="load-card__header">
                   <div className="load-card__header-left">
                     <div className="load-num">{loadIndex + 1}</div>
+                    <span className={`load-badge load-badge--${load.loadType}`}>
+                      {load.loadType === "motor" ? "MOTOR" : "RESISTIVA"}
+                    </span>
                     <input
                       value={load.label}
                       onChange={e => updateField(`loads.${loadIndex}.label`, e.target.value)}
@@ -379,14 +405,16 @@ export default function App() {
                     <button onClick={() => removeLoad(load.id)} className="btn-remove-x">✕</button>
                   )}
                 </div>
-                <div className="load-params-grid">
-                  <FormField label="Potencia (HP)"><FormInput value={load.hp} onChange={v => updateField(`loads.${loadIndex}.hp`, v)} min={0.5} step={0.5} /></FormField>
-                  <div className="xdpp-display">
-                    <div className="xdpp-display__label">X''d automático</div>
-                    <div className="xdpp-display__value">{load.hp >= 50 ? "0.17" : "0.20"}</div>
-                    <div className="xdpp-display__hint">{load.hp >= 50 ? "Motor ≥ 50 hp" : "Motor < 50 hp"}</div>
+                {load.loadType === "motor" && (
+                  <div className="load-params-grid">
+                    <FormField label="Potencia (HP)"><FormInput value={load.hp} onChange={v => updateField(`loads.${loadIndex}.hp`, v)} min={0.5} step={0.5} /></FormField>
+                    <div className="xdpp-display">
+                      <div className="xdpp-display__label">X''d automático</div>
+                      <div className="xdpp-display__value">{load.hp >= 50 ? "0.17" : "0.20"}</div>
+                      <div className="xdpp-display__hint">{load.hp >= 50 ? "Motor ≥ 50 hp" : "Motor < 50 hp"}</div>
+                    </div>
                   </div>
-                </div>
+                )}
                 <CableForm cable={load.cable} onChange={c => updateField(`loads.${loadIndex}.cable`, c)} />
               </div>
             ))}
@@ -474,36 +502,65 @@ export default function App() {
           </div>
         </Card>
 
-        <Card>
-          <div className="card-section-label">Contribución Motores → Barra</div>
-          <div className="table-overflow">
-            <table className="res-table">
-              <thead><tr>
-                {["Motor", "HP", "X''d", "kVAcc motor", "kVAcc cable", "kVAcc a barra", "Icc (A)"].map(header => <th key={header} className="res-th">{header}</th>)}
-              </tr></thead>
-              <tbody>
-                {loadResults.map((load, loadIndex) => (
-                  <tr key={load.id} className={loadIndex % 2 ? "res-tr--striped" : ""}>
-                    <td className="res-td res-td--dark res-td--bold">{load.label}</td>
-                    <td className="res-td">{load.hp}</td>
-                    <td className="res-td res-td--amber">{load.xdpp}</td>
-                    <td className="res-td res-td--mono">{formatNumber(load.motorKVAcc, 1)}</td>
-                    <td className={`res-td res-td--mono${load.cableKVAcc ? "" : " res-td--light"}`}>
-                      {load.cableKVAcc ? formatNumber(load.cableKVAcc, 1) : "—"}
-                    </td>
-                    <td className="res-td res-td--green res-td--bold res-td--mono">{formatNumber(load.kVAccContributionToBus, 2)}</td>
-                    <td className="res-td res-td--mono">{formatNumber(load.kVAccContributionToBus / (Math.sqrt(3) * busVoltageKV), 1)}</td>
+        {loadResults.some(l => l.loadType === "motor") && (
+          <Card>
+            <div className="card-section-label">Contribución Motores → Barra</div>
+            <div className="table-overflow">
+              <table className="res-table">
+                <thead><tr>
+                  {["Motor", "HP", "X''d", "kVAcc motor", "kVAcc cable", "kVAcc a barra", "Icc (A)"].map(header => <th key={header} className="res-th">{header}</th>)}
+                </tr></thead>
+                <tbody>
+                  {loadResults.filter(l => l.loadType === "motor").map((load, loadIndex) => (
+                    <tr key={load.id} className={loadIndex % 2 ? "res-tr--striped" : ""}>
+                      <td className="res-td res-td--dark res-td--bold">{load.label}</td>
+                      <td className="res-td">{load.hp}</td>
+                      <td className="res-td res-td--amber">{load.xdpp}</td>
+                      <td className="res-td res-td--mono">{formatNumber(load.motorKVAcc, 1)}</td>
+                      <td className={`res-td res-td--mono${load.cableKVAcc ? "" : " res-td--light"}`}>
+                        {load.cableKVAcc ? formatNumber(load.cableKVAcc, 1) : "—"}
+                      </td>
+                      <td className="res-td res-td--green res-td--bold res-td--mono">{formatNumber(load.kVAccContributionToBus, 2)}</td>
+                      <td className="res-td res-td--mono">{formatNumber(load.kVAccContributionToBus / (Math.sqrt(3) * busVoltageKV), 1)}</td>
+                    </tr>
+                  ))}
+                  <tr className="res-tr--total-green">
+                    <td className="res-td res-td--green res-td--bold" colSpan={5}>Total aguas abajo</td>
+                    <td className="res-td res-td--green res-td--bold res-td--mono res-td--lg">{formatNumber(downstreamKVAcc, 1)} kVA</td>
+                    <td></td>
                   </tr>
-                ))}
-                <tr className="res-tr--total-green">
-                  <td className="res-td res-td--green res-td--bold" colSpan={5}>Total aguas abajo</td>
-                  <td className="res-td res-td--green res-td--bold res-td--mono res-td--lg">{formatNumber(downstreamKVAcc, 1)} kVA</td>
-                  <td></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+        {loadResults.some(l => l.loadType === "resistive") && (
+          <Card>
+            <div className="card-section-label">Cargas Resistivas — kVAcc Disponible en Terminal</div>
+            <div className="table-overflow">
+              <table className="res-table">
+                <thead><tr>
+                  {["Carga", "kVAcc conductor", "kVAcc en terminal", "Icc terminal (A)"].map(header => <th key={header} className="res-th">{header}</th>)}
+                </tr></thead>
+                <tbody>
+                  {loadResults.filter(l => l.loadType === "resistive").map((load, loadIndex) => {
+                    const terminalKVAcc = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
+                    return (
+                      <tr key={load.id} className={loadIndex % 2 ? "res-tr--striped" : ""}>
+                        <td className="res-td res-td--dark res-td--bold">{load.label}</td>
+                        <td className={`res-td res-td--mono${load.cableKVAcc ? "" : " res-td--light"}`}>
+                          {load.cableKVAcc ? formatNumber(load.cableKVAcc, 1) : "—"}
+                        </td>
+                        <td className="res-td res-td--amber res-td--bold res-td--mono">{formatNumber(terminalKVAcc, 1)} kVA</td>
+                        <td className="res-td res-td--mono">{formatNumber(terminalKVAcc / (Math.sqrt(3) * busVoltageKV), 1)} A</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
 
         {/* Final summary */}
         <div className="summary-grid">

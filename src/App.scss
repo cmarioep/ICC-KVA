@@ -361,6 +361,23 @@ $c-border-input: #cbd5e1;
     border-color: $c-green;
     color: $c-green;
   }
+
+  &--amber {
+    background: $c-amber-bg;
+    border-color: $c-amber;
+    color: $c-amber;
+  }
+}
+
+.btn-add-group {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-top: 4px;
+
+  .btn-add {
+    margin-top: 0;
+  }
 }
 
 // ── Sources list ──────────────────────────────────────────────────────────────
@@ -506,6 +523,10 @@ $c-border-input: #cbd5e1;
     align-items: center;
     gap: 8px;
   }
+
+  &--resistive {
+    border-color: $c-amber-border;
+  }
 }
 
 .load-num {
@@ -521,6 +542,26 @@ $c-border-input: #cbd5e1;
   font-weight: 700;
   color: $c-green;
   flex-shrink: 0;
+}
+
+.load-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.07em;
+
+  &--motor {
+    background: $c-green-light;
+    color: $c-green;
+    border: 1px solid $c-green-border;
+  }
+
+  &--resistive {
+    background: $c-amber-bg;
+    color: $c-amber;
+    border: 1px solid $c-amber-border;
+  }
 }
 
 .load-label-input {
