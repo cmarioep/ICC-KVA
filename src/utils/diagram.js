@@ -142,9 +142,9 @@ export function drawDiagram(canvas, data, results) {
   function drawResistiveLoadSymbol(centerX, centerY, label) {
     ctx.setLineDash([]);
     ctx.fillStyle = "#fffbeb";
-    ctx.fillRect(centerX - 22, centerY - 14, 44, 28);
+    ctx.fillRect(centerX - 22, centerY - 24, 44, 48);
     ctx.strokeStyle = "#b45309"; ctx.lineWidth = 2;
-    ctx.strokeRect(centerX - 22, centerY - 14, 44, 28);
+    ctx.strokeRect(centerX - 22, centerY - 24, 44, 48);
     drawText("R", centerX, centerY + 5, 13, "#b45309", "center", true);
     drawText(label, centerX, centerY + 38, 10, "#111", "center", true);
   }
@@ -347,32 +347,40 @@ export function drawDiagram(canvas, data, results) {
     const upstreamKVAatBus = upstreamKVAcc;
 
     if (load.loadType === "resistive") {
-      const lineStartY = currentY + 4;
-      let cableBoxY = null;
-      if (load.cable?.enabled && load.cableKVAcc) {
-        cableBoxY = lineStartY + SEGMENT_LENGTH + 11;
-      }
-      const symbolCenterY = cableBoxY
-        ? cableBoxY + 11 + SEGMENT_LENGTH + 24
-        : lineStartY + SEGMENT_LENGTH + 24;
-
       const terminalKVAcc = load.cableKVAcc
         ? series(upstreamKVAatBus, load.cableKVAcc)
         : upstreamKVAatBus;
       const iccAtTerminal = terminalKVAcc / (Math.sqrt(3) * busVoltageKV);
 
-      const labelTexts = cableBoxY
-        ? [upstreamKVAatBus.toFixed(2) + " kVA", terminalKVAcc.toFixed(2) + " kVA", "(" + load.cableKVAcc.toFixed(2) + " kVA)"]
-        : [terminalKVAcc.toFixed(2) + " kVA"];
+      const labelTexts = [upstreamKVAatBus.toFixed(2) + " kVA"];
+      if (load.cable?.enabled && load.cableKVAcc) {
+        labelTexts.push(
+          terminalKVAcc.toFixed(2) + " kVA",
+          "(" + load.cableKVAcc.toFixed(2) + " kVA)",
+        );
+      }
       const textStartX = computeSectionTextStartX(loadCenterX, labelTexts);
 
-      drawVerticalLine(loadCenterX, lineStartY, symbolCenterY);
-      drawText(upstreamKVAatBus.toFixed(2) + " kVA", textStartX, lineStartY + 14, 10, "#111");
-      if (cableBoxY !== null) {
-        drawImpedanceBox(loadCenterX, cableBoxY, load.cableKVAcc.toFixed(2), textStartX);
-        drawText(terminalKVAcc.toFixed(2) + " kVA", textStartX, cableBoxY + 22, 10, "#555");
+      const flowPair1Y = currentY + 4 + SEGMENT_LENGTH + 4;
+      let cableBoxY = null, flowPair2Y = null;
+      if (load.cable?.enabled && load.cableKVAcc) {
+        cableBoxY  = flowPair1Y + 12 + SEGMENT_LENGTH + 11;
+        flowPair2Y = cableBoxY  + 11 + SEGMENT_LENGTH + 4;
       }
+      const flowPairBeforeSymbolY = flowPair2Y ?? flowPair1Y;
+      const symbolCenterY = flowPairBeforeSymbolY + 12 + SEGMENT_LENGTH + 24;
+
+      drawVerticalLine(loadCenterX, currentY + 4, symbolCenterY);
+      if (cableBoxY !== null) drawImpedanceBox(loadCenterX, cableBoxY, load.cableKVAcc.toFixed(2), textStartX);
       drawResistiveLoadSymbol(loadCenterX, symbolCenterY, load.label);
+
+      drawText(upstreamKVAatBus.toFixed(2) + " kVA", textStartX, flowPair1Y - 4, 10, "#111");
+      drawRightArrow(loadCenterX - 8, flowPair1Y, 40);
+      if (flowPair2Y !== null) {
+        drawText(terminalKVAcc.toFixed(2) + " kVA", textStartX, flowPair2Y - 4, 10, "#555");
+        drawRightArrow(loadCenterX - 8, flowPair2Y, 40);
+      }
+
       drawText(`Icc: ${iccAtTerminal.toFixed(2)} A`, loadCenterX, symbolCenterY + 52, 10, "#333", "center");
       return;
     }
