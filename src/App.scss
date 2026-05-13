@@ -273,6 +273,55 @@ $c-border-input: #cbd5e1;
   font-family: $font-mono;
   color: $c-dark;
   padding-bottom: 48px;
+
+  &--results {
+    height: 100vh;
+    overflow: hidden;
+    padding-bottom: 0;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+// ── Results body (two-column) ─────────────────────────────────────────────────
+
+.res-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.res-main {
+  width: 70%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid $c-border;
+
+  .kpi-strip {
+    flex-shrink: 0;
+  }
+
+  .canvas-wrap {
+    flex: 1;
+    overflow: auto;
+    border-bottom: none;
+  }
+}
+
+.res-aside {
+  width: 30%;
+  overflow-y: auto;
+  background: $bg-page;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+
+  .rp {
+    margin-bottom: 0;
+  }
 }
 
 // ── Topbar (form) ─────────────────────────────────────────────────────────────
@@ -846,7 +895,7 @@ $c-border-input: #cbd5e1;
   border-radius: 12px;
   padding: 20px 24px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
 }
 
