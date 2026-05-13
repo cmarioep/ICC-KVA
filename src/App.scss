@@ -157,6 +157,71 @@ $c-border-input: #cbd5e1;
   }
 }
 
+// ── KV two-column table ───────────────────────────────────────────────────────
+
+.kv-table {
+  overflow-x: auto;
+  background: $bg-white;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid $c-border;
+  border-top: none;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+}
+
+.kv-td {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid $c-border-light;
+  font-family: $font-mono;
+
+  &--label {
+    color: $c-slate-mid;
+    width: 55%;
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  &--value {
+    color: $c-dark;
+    text-align: right;
+  }
+
+  &--header {
+    background: $c-border-light;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: $c-slate-mid;
+    padding: 5px 10px;
+  }
+
+  &--bold  { font-weight: 700; }
+  &--blue  { color: $c-blue; }
+  &--amber { color: $c-amber; }
+  &--green { color: $c-green; }
+  &--red   { color: $c-red; }
+}
+
+.kv-tr--total-amber {
+  background: $c-amber-bg;
+  border-top: 2px solid $c-amber-border;
+}
+
+.kv-tr--total-blue {
+  background: $c-blue-light;
+  border-top: 2px solid $c-blue-border;
+}
+
+.kv-tr--total-green {
+  background: $c-green-light;
+  border-top: 2px solid $c-green-border;
+}
+
 // ── Resumen de Parámetros ─────────────────────────────────────────────────────
 
 .sec-title {

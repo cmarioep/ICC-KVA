@@ -20,21 +20,52 @@ function SectionHeader({ number, title, sub }) {
   );
 }
 
-/* ── RESUMEN DE PARÁMETROS ───────────────────────────────── */
+/* ── KV TABLE ────────────────────────────────────────────── */
 function SectionTitle({ children }) {
   return <div className="sec-title">{children}</div>;
 }
 
-function SummaryTable({ children }) {
+function KVTable({ rows }) {
   return (
-    <div className="resumen-table">
-      <table>{children}</table>
+    <div className="kv-table">
+      <table>
+        <tbody>
+          {rows.map((row, i) => {
+            if (row.type === "header") {
+              return (
+                <tr key={i}>
+                  <td className="kv-td kv-td--header" colSpan={2}>{row.label}</td>
+                </tr>
+              );
+            }
+            if (row.type === "total") {
+              return (
+                <tr key={i} className={`kv-tr--total${row.color ? `-${row.color}` : ""}`}>
+                  <td className={`kv-td kv-td--label kv-td--bold${row.color ? ` kv-td--${row.color}` : ""}`}>{row.label}</td>
+                  <td className={`kv-td kv-td--value kv-td--bold${row.color ? ` kv-td--${row.color}` : ""}`}>{row.value}</td>
+                </tr>
+              );
+            }
+            return (
+              <tr key={i}>
+                <td className="kv-td kv-td--label">{row.label}</td>
+                <td className={[
+                  "kv-td kv-td--value",
+                  row.color ? `kv-td--${row.color}` : "",
+                  row.bold  ? "kv-td--bold"          : "",
+                ].filter(Boolean).join(" ")}>{row.value}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
+/* ── RESUMEN DE PARÁMETROS ───────────────────────────────── */
 function ParameterSummary({ data, result }) {
-  const { gridKVAcc, srcResults, loadResults } = result;
+  const { gridKVAcc, srcResults, loadResults, upstreamKVAcc, busVoltageKV } = result;
   const firstSource = srcResults[0];
 
   return (
@@ -46,160 +77,111 @@ function ParameterSummary({ data, result }) {
       <div className="rp__body">
 
         <SectionTitle>Parámetros Operador de Red</SectionTitle>
-        <SummaryTable>
-          <tbody>
-            <tr>
-              <td className="rp-td rp-td--bold rp-td--slate">Nivel de Tensión [kV]</td>
-              <td className="rp-td rp-td--bold rp-td--amber">{data.grid.kV}</td>
-            </tr>
-            <tr>
-              <td className="rp-td rp-td--slate">Corriente de Cortocircuito 3Ø [kA]</td>
-              <td className="rp-td">{data.grid.Icc}</td>
-            </tr>
-            <tr>
-              <td className="rp-td rp-td--slate">kVAcc</td>
-              <td className="rp-td rp-td--bold rp-td--blue">{gridKVAcc.toFixed(2)} kVA</td>
-            </tr>
-          </tbody>
-        </SummaryTable>
+        <KVTable rows={[
+          { label: "Nivel de Tensión [kV]",            value: data.grid.kV,              bold: true, color: "amber" },
+          { label: "Corriente Cortocircuito 3Ø [kA]",  value: data.grid.Icc },
+          { label: "kVAcc red",                         value: `${gridKVAcc.toFixed(2)} kVA`, bold: true, color: "blue" },
+        ]} />
 
         {firstSource?.type === "transformer" && firstSource?.inCable?.enabled && (
           <>
             <SectionTitle>Acometida de Media Tensión</SectionTitle>
-            <SummaryTable>
-              <thead><tr>
-                {["Alimentador", "Calibre", "Material", "Longitud (m)", "Z (Ω)", "kVAsc"].map(h =>
-                  <th key={h} className="rp-th">{h}</th>)}
-              </tr></thead>
-              <tbody>
-                <tr>
-                  <td className="rp-td rp-td--bold">RED {data.grid.kV} kV</td>
-                  <td className="rp-td">{firstSource.inCable.gauge}</td>
-                  <td className="rp-td">{firstSource.inCable.material ?? "Cobre"}</td>
-                  <td className="rp-td">{firstSource.inCable.len}</td>
-                  <td className="rp-td">{(getZ(firstSource.inCable.type, firstSource.inCable.gauge, firstSource.inCable.material, firstSource.inCable.canal) * firstSource.inCable.len / 1000).toFixed(4)}</td>
-                  <td className="rp-td rp-td--bold rp-td--blue">{firstSource.inCableKVAcc?.toFixed(2) ?? "—"}</td>
-                </tr>
-              </tbody>
-            </SummaryTable>
+            <KVTable rows={[
+              { label: "Alimentador",       value: `RED ${data.grid.kV} kV`,  bold: true },
+              { label: "Calibre",           value: firstSource.inCable.gauge },
+              { label: "Material",          value: firstSource.inCable.material ?? "Cobre" },
+              { label: "Longitud (m)",      value: firstSource.inCable.len },
+              { label: "Z (Ω)",             value: (getZ(firstSource.inCable.type, firstSource.inCable.gauge, firstSource.inCable.material, firstSource.inCable.canal) * firstSource.inCable.len / 1000).toFixed(4) },
+              { label: "kVAcc cable",       value: firstSource.inCableKVAcc?.toFixed(2) ?? "—",                        color: "blue" },
+              { label: "kVAcc entrada eq.", value: `${firstSource.kVAccAtSourceInput?.toFixed(2) ?? "—"} kVA`, bold: true, color: "blue" },
+            ]} />
           </>
         )}
 
         <SectionTitle>Fuentes de Alimentación</SectionTitle>
-        <SummaryTable>
-          <thead><tr>
-            {["Descrip.", "kVA", "Un (kV)", "Z% / X''d", "kVAeq"].map(h =>
-              <th key={h} className="rp-th">{h}</th>)}
-          </tr></thead>
-          <tbody>
-            {srcResults.map(source => (
-              <tr key={source.id}>
-                <td className="rp-td rp-td--bold">{source.label}</td>
-                <td className="rp-td">{source.kVA}</td>
-                <td className="rp-td">{source.kVsec}</td>
-                <td className="rp-td">{source.type === "transformer" ? `${source.zPct}%` : `X''=${source.xdpp}`}</td>
-                <td className="rp-td rp-td--bold rp-td--blue">{source.equipmentKVAcc.toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </SummaryTable>
+        <KVTable rows={srcResults.flatMap(source => [
+          ...(srcResults.length > 1 ? [{ type: "header", label: source.label }] : []),
+          { label: "kVA nominal",                     value: source.kVA },
+          { label: "Un (kV)",                         value: source.kVsec },
+          { label: source.type === "transformer" ? "Impedancia Z%" : "X''d",
+                                                      value: source.type === "transformer" ? `${source.zPct}%` : source.xdpp },
+          { label: "kVAcc equipo",                    value: source.equipmentKVAcc.toFixed(2),           color: "blue" },
+          { label: "kVAcc pasante",                   value: source.kVAccPassingThrough.toFixed(2),      color: "blue" },
+          { label: "kVAcc a barra",                   value: `${source.kVAccAtSourceOutput.toFixed(2)} kVA`, bold: true, color: "blue" },
+        ])} />
 
         {firstSource?.outCable?.enabled && (
           <>
             <SectionTitle>Acometida de Baja Tensión</SectionTitle>
-            <SummaryTable>
-              <thead><tr>
-                {["Alimentador", "Calibre", "Material", "Longitud (m)", "Z (Ω)", "kVAsc"].map(h =>
-                  <th key={h} className="rp-th">{h}</th>)}
-              </tr></thead>
-              <tbody>
-                <tr>
-                  <td className="rp-td rp-td--bold">{firstSource.label} - TGA</td>
-                  <td className="rp-td">{firstSource.outCable.gauge}</td>
-                  <td className="rp-td">{firstSource.outCable.material ?? "Cobre"}</td>
-                  <td className="rp-td">{firstSource.outCable.len}</td>
-                  <td className="rp-td">{(getZ(firstSource.outCable.type, firstSource.outCable.gauge, firstSource.outCable.material, firstSource.outCable.canal) * firstSource.outCable.len / 1000).toFixed(4)}</td>
-                  <td className="rp-td rp-td--bold rp-td--blue">{firstSource.outCableKVAcc?.toFixed(2) ?? "—"}</td>
-                </tr>
-              </tbody>
-            </SummaryTable>
+            <KVTable rows={[
+              { label: "Alimentador",     value: `${firstSource.label} – TGA`,   bold: true },
+              { label: "Calibre",         value: firstSource.outCable.gauge },
+              { label: "Material",        value: firstSource.outCable.material ?? "Cobre" },
+              { label: "Longitud (m)",    value: firstSource.outCable.len },
+              { label: "Z (Ω)",           value: (getZ(firstSource.outCable.type, firstSource.outCable.gauge, firstSource.outCable.material, firstSource.outCable.canal) * firstSource.outCable.len / 1000).toFixed(4) },
+              { label: "kVAcc cable",     value: firstSource.outCableKVAcc?.toFixed(2) ?? "—",             color: "blue" },
+              { label: "kVAcc a barra",   value: `${firstSource.kVAccAtSourceOutput.toFixed(2)} kVA`, bold: true, color: "blue" },
+              { label: "Icc en barra (A)",value: `${(firstSource.kVAccAtSourceOutput / (Math.sqrt(3) * firstSource.kVsec)).toFixed(1)} A`, bold: true, color: "amber" },
+            ]} />
           </>
         )}
 
         {loadResults.some(l => l.cable?.enabled) && (
           <>
             <SectionTitle>Alimentadores de Carga</SectionTitle>
-            <SummaryTable>
-              <thead><tr>
-                {["Circ.", "Alimentador", "Calibre", "Material", "Long (m)", "Z (Ω)", "kVAsc"].map(h =>
-                  <th key={h} className="rp-th">{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {loadResults.filter(l => l.cable?.enabled).map(load => (
-                  <tr key={load.id}>
-                    <td className="rp-td rp-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
-                    <td className="rp-td rp-td--bold">TGA - {load.label}</td>
-                    <td className="rp-td">{load.cable.gauge}</td>
-                    <td className="rp-td">{load.cable.material ?? "Cobre"}</td>
-                    <td className="rp-td">{load.cable.len}</td>
-                    <td className="rp-td">{(getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal) * load.cable.len / 1000).toFixed(4)}</td>
-                    <td className="rp-td rp-td--bold rp-td--blue">{load.cableKVAcc?.toFixed(2) ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </SummaryTable>
+            <KVTable rows={loadResults.filter(l => l.cable?.enabled).flatMap(load => {
+              const vKV           = load.voltageKV ?? busVoltageKV;
+              const terminalKVAcc = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
+              const terminalIcc   = terminalKVAcc / (Math.sqrt(3) * vKV);
+              return [
+                { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
+                { label: "Calibre",           value: load.cable.gauge },
+                { label: "Material",          value: load.cable.material ?? "Cobre" },
+                { label: "Longitud (m)",      value: load.cable.len },
+                { label: "Z (Ω)",             value: (getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal) * load.cable.len / 1000).toFixed(4) },
+                { label: "kVAcc cable",       value: load.cableKVAcc?.toFixed(2) ?? "—",         color: "blue" },
+                { label: "kVAcc terminal",    value: `${terminalKVAcc.toFixed(2)} kVA`, bold: true, color: "blue" },
+                { label: "Icc terminal (A)",  value: `${terminalIcc.toFixed(1)} A`,     bold: true, color: "amber" },
+              ];
+            })} />
           </>
         )}
 
         {loadResults.some(l => l.loadType === "motor") && (
           <>
             <SectionTitle>Cargas Inductivas (Motores)</SectionTitle>
-            <SummaryTable>
-              <thead><tr>
-                {["Circ.", "Tipo", "Descrip.", "Fase", "V (V)", "Carga (VA)", "HP", "X''", "kVAsc"].map(h =>
-                  <th key={h} className="rp-th">{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {loadResults.filter(l => l.loadType === "motor").map((load, i) => (
-                  <tr key={load.id} className={i % 2 ? "rp-tr--odd" : ""}>
-                    <td className="rp-td rp-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
-                    <td className="rp-td rp-td--amber">{load.circuitLoadType}</td>
-                    <td className="rp-td rp-td--bold">{load.label}</td>
-                    <td className="rp-td">{load.circuitPhase}</td>
-                    <td className="rp-td">{load.voltageKV * 1000}</td>
-                    <td className="rp-td">{load.loadVA}</td>
-                    <td className="rp-td rp-td--green">{load.hp.toFixed(2)}</td>
-                    <td className="rp-td rp-td--amber">{load.xdpp?.toFixed(3)}</td>
-                    <td className="rp-td rp-td--bold rp-td--blue">{load.motorKVAcc?.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </SummaryTable>
+            <KVTable rows={loadResults.filter(l => l.loadType === "motor").flatMap(load => [
+              { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
+              { label: "Tipo",          value: load.circuitLoadType,          color: "amber" },
+              { label: "Fase",          value: load.circuitPhase },
+              { label: "Tensión (V)",   value: load.voltageKV * 1000 },
+              { label: "Carga (VA)",    value: load.loadVA },
+              { label: "Potencia (HP)", value: load.hp.toFixed(2),            color: "green" },
+              { label: "X''d",          value: load.xdpp?.toFixed(3),         color: "amber" },
+              { label: "kVAcc motor",   value: load.motorKVAcc?.toFixed(2) ?? "—", color: "blue" },
+              { label: "kVAcc a barra", value: `${load.kVAccContributionToBus?.toFixed(2) ?? "—"} kVA`, bold: true, color: "green" },
+            ])} />
           </>
         )}
 
         {loadResults.some(l => l.loadType === "resistive") && (
           <>
             <SectionTitle>Cargas Resistivas</SectionTitle>
-            <SummaryTable>
-              <thead><tr>
-                {["Circ.", "Tipo", "Descrip.", "Fase", "V (V)", "Carga (VA)", "kVAcc conductor"].map(h =>
-                  <th key={h} className="rp-th">{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {loadResults.filter(l => l.loadType === "resistive").map((load, i) => (
-                  <tr key={load.id} className={i % 2 ? "rp-tr--odd" : ""}>
-                    <td className="rp-td rp-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
-                    <td className="rp-td rp-td--amber">{load.circuitLoadType}</td>
-                    <td className="rp-td rp-td--bold">{load.label}</td>
-                    <td className="rp-td">{load.circuitPhase}</td>
-                    <td className="rp-td">{load.voltageKV * 1000}</td>
-                    <td className="rp-td">{load.loadVA}</td>
-                    <td className="rp-td rp-td--bold rp-td--amber">{load.cableKVAcc?.toFixed(2) ?? "—"} kVA</td>
-                  </tr>
-                ))}
-              </tbody>
-            </SummaryTable>
+            <KVTable rows={loadResults.filter(l => l.loadType === "resistive").flatMap(load => {
+              const vKV           = load.voltageKV ?? busVoltageKV;
+              const terminalKVAcc = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
+              const terminalIcc   = terminalKVAcc / (Math.sqrt(3) * vKV);
+              return [
+                { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
+                { label: "Tipo",              value: load.circuitLoadType,     color: "amber" },
+                { label: "Fase",              value: load.circuitPhase },
+                { label: "Tensión (V)",       value: load.voltageKV * 1000 },
+                { label: "Carga (VA)",        value: load.loadVA },
+                { label: "kVAcc conductor",   value: load.cableKVAcc?.toFixed(2) ?? "—",         color: "amber" },
+                { label: "kVAcc terminal",    value: `${terminalKVAcc.toFixed(2)} kVA`, bold: true, color: "amber" },
+                { label: "Icc terminal (A)",  value: `${terminalIcc.toFixed(1)} A`,     bold: true, color: "amber" },
+              ];
+            })} />
           </>
         )}
 
@@ -276,15 +258,14 @@ export default function App() {
         <div className="res-main">
           <div className="kpi-strip">
             {[
-              { label: "kVAcc Total en Barra", value: formatNumber(busKVAcc, 1) + " kVA",                        color: "amber", sub: "Σ upstream + downstream" },
-              { label: "Icc Simétrica",        value: formatNumber(symmetricShortCircuitCurrent, 0) + " A",       color: "blue",  sub: `${busVoltageKV * 1000} V` },
-              { label: "Icc Asimétrica",       value: formatNumber(asymmetricShortCircuitCurrent, 0) + " A",      color: "red",   sub: `Factor ×${asymmetricFactor}` },
-              { label: "Contrib. Motores",     value: formatNumber(downstreamKVAcc, 1) + " kVA",                  color: "green", sub: "Aguas abajo" },
-            ].map(({ label, value, color, sub }) => (
+              { label: "kVAcc Total en Barra", value: formatNumber(busKVAcc, 1) + " kVA",                       color: "amber" },
+              { label: "Icc Simétrica",        value: formatNumber(symmetricShortCircuitCurrent, 0) + " A",      color: "blue"  },
+              { label: "Icc Asimétrica",       value: formatNumber(asymmetricShortCircuitCurrent, 0) + " A",     color: "red"   },
+              { label: "Contrib. Motores",     value: formatNumber(downstreamKVAcc, 1) + " kVA",                 color: "green" },
+            ].map(({ label, value, color }) => (
               <div key={label} className={`kpi-item kpi-item--${color}`}>
                 <div className="kpi-item__label">{label}</div>
                 <div className={`kpi-item__value kpi-item__value--${color}`}>{value}</div>
-                <div className="kpi-item__sub">{sub}</div>
               </div>
             ))}
           </div>
@@ -300,104 +281,69 @@ export default function App() {
 
           <Card>
             <div className="card-section-label">Flujo Aguas Arriba → Barra</div>
-            <div className="table-overflow">
-              <table className="res-table">
-                <thead><tr>
-                  {["Fuente", "kVAcc fuente", "kVAcc pasante", "kVAcc a barra"].map(h => <th key={h} className="res-th">{h}</th>)}
-                </tr></thead>
-                <tbody>
-                  <tr>
-                    <td className="res-td res-td--blue">Red / Distribución</td>
-                    <td className="res-td res-td--amber res-td--bold res-td--mono">{formatNumber(gridKVAcc, 1)} kVA</td>
-                    <td className="res-td">—</td>
-                    <td className="res-td">—</td>
-                  </tr>
-                  {srcResults.map(source => (
-                    <tr key={source.id}>
-                      <td className="res-td res-td--dark res-td--bold">{source.label}</td>
-                      <td className="res-td res-td--mono">{formatNumber(source.equipmentKVAcc, 1)} kVA</td>
-                      <td className="res-td res-td--mono">{formatNumber(source.kVAccPassingThrough, 1)} kVA</td>
-                      <td className="res-td res-td--blue res-td--bold res-td--mono">{formatNumber(source.kVAccAtSourceOutput, 1)} kVA</td>
-                    </tr>
-                  ))}
-                  <tr className="res-tr--total-blue">
-                    <td className="res-td res-td--amber res-td--bold" colSpan={3}>Total aguas arriba</td>
-                    <td className="res-td res-td--amber res-td--bold res-td--mono res-td--lg">{formatNumber(upstreamKVAcc, 1)} kVA</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <KVTable rows={[
+              { label: "Red / Distribución — kVAcc", value: `${formatNumber(gridKVAcc, 1)} kVA`, bold: true, color: "amber" },
+              ...srcResults.flatMap(source => {
+                const cable = source.inCable?.enabled  ? source.inCable
+                            : source.outCable?.enabled ? source.outCable : null;
+                const rows = [{ type: "header", label: source.label }];
+                if (cable) rows.push(
+                  { label: "Calibre",      value: cable.gauge },
+                  { label: "Material",     value: cable.material ?? "Cobre" },
+                  { label: "Longitud (m)", value: cable.len },
+                  { label: "Z (Ω)",        value: (getZ(cable.type, cable.gauge, cable.material, cable.canal) * cable.len / 1000).toFixed(4) },
+                );
+                rows.push(
+                  { label: "kVAcc fuente",   value: `${formatNumber(source.equipmentKVAcc, 1)} kVA`,      color: "blue" },
+                  { label: "kVAcc pasante",  value: `${formatNumber(source.kVAccPassingThrough, 1)} kVA`, color: "blue" },
+                  { label: "kVAcc a barra",  value: `${formatNumber(source.kVAccAtSourceOutput, 1)} kVA`, bold: true, color: "blue" },
+                );
+                return rows;
+              }),
+              { type: "total", label: "Total aguas arriba", value: `${formatNumber(upstreamKVAcc, 1)} kVA`, color: "amber" },
+            ]} />
           </Card>
 
           {loadResults.some(l => l.loadType === "motor") && (
             <Card>
               <div className="card-section-label">Contribución Motores → Barra</div>
-              <div className="table-overflow">
-                <table className="res-table">
-                  <thead><tr>
-                    {["Circ.", "Tipo", "Motor", "V (V)", "HP", "X''d", "kVAcc motor", "kVAcc cable", "kVAcc a barra", "Icc (A)"].map(h => <th key={h} className="res-th">{h}</th>)}
-                  </tr></thead>
-                  <tbody>
-                    {loadResults.filter(l => l.loadType === "motor").map((load, i) => {
-                      const loadVoltageKV = load.voltageKV ?? busVoltageKV;
-                      return (
-                        <tr key={load.id} className={i % 2 ? "res-tr--striped" : ""}>
-                          <td className="res-td res-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
-                          <td className="res-td res-td--amber">{load.circuitLoadType}</td>
-                          <td className="res-td res-td--dark res-td--bold">{load.label}</td>
-                          <td className="res-td">{load.voltageKV * 1000}</td>
-                          <td className="res-td">{load.hp.toFixed(2)}</td>
-                          <td className="res-td res-td--amber">{load.xdpp}</td>
-                          <td className="res-td res-td--mono">{formatNumber(load.motorKVAcc, 1)}</td>
-                          <td className={`res-td res-td--mono${load.cableKVAcc ? "" : " res-td--light"}`}>
-                            {load.cableKVAcc ? formatNumber(load.cableKVAcc, 1) : "—"}
-                          </td>
-                          <td className="res-td res-td--green res-td--bold res-td--mono">{formatNumber(load.kVAccContributionToBus, 2)}</td>
-                          <td className="res-td res-td--mono">{formatNumber(load.kVAccContributionToBus / (Math.sqrt(3) * loadVoltageKV), 1)}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr className="res-tr--total-green">
-                      <td className="res-td res-td--green res-td--bold" colSpan={8}>Total aguas abajo</td>
-                      <td className="res-td res-td--green res-td--bold res-td--mono res-td--lg">{formatNumber(downstreamKVAcc, 1)} kVA</td>
-                      <td></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <KVTable rows={[
+                ...loadResults.filter(l => l.loadType === "motor").flatMap(load => {
+                  const vKV = load.voltageKV ?? busVoltageKV;
+                  const icc = load.kVAccContributionToBus / (Math.sqrt(3) * vKV);
+                  return [
+                    { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
+                    { label: "Tipo",          value: load.circuitLoadType,   color: "amber" },
+                    { label: "Tensión (V)",   value: load.voltageKV * 1000 },
+                    { label: "Potencia (HP)", value: load.hp.toFixed(2),     color: "green" },
+                    { label: "X''d",          value: load.xdpp,              color: "amber" },
+                    { label: "kVAcc motor",   value: `${formatNumber(load.motorKVAcc, 1)} kVA`,    color: "blue" },
+                    { label: "kVAcc cable",   value: load.cableKVAcc ? `${formatNumber(load.cableKVAcc, 1)} kVA` : "—", color: "blue" },
+                    { label: "kVAcc a barra", value: `${formatNumber(load.kVAccContributionToBus, 2)} kVA`, bold: true, color: "green" },
+                    { label: "Icc (A)",       value: `${formatNumber(icc, 1)} A`,                  bold: true, color: "green" },
+                  ];
+                }),
+                { type: "total", label: "Total aguas abajo", value: `${formatNumber(downstreamKVAcc, 1)} kVA`, color: "green" },
+              ]} />
             </Card>
           )}
 
           {loadResults.some(l => l.loadType === "resistive") && (
             <Card>
-              <div className="card-section-label">Cargas Resistivas — kVAcc Disponible en Terminal</div>
-              <div className="table-overflow">
-                <table className="res-table">
-                  <thead><tr>
-                    {["Circ.", "Tipo", "Carga", "V (V)", "kVAcc conductor", "kVAcc en terminal", "Icc terminal (A)"].map(h => <th key={h} className="res-th">{h}</th>)}
-                  </tr></thead>
-                  <tbody>
-                    {loadResults.filter(l => l.loadType === "resistive").map((load, i) => {
-                      const loadVoltageKV  = load.voltageKV ?? busVoltageKV;
-                      const terminalKVAcc  = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
-                      const terminalIcc    = terminalKVAcc / (Math.sqrt(3) * loadVoltageKV);
-                      return (
-                        <tr key={load.id} className={i % 2 ? "res-tr--striped" : ""}>
-                          <td className="res-td res-td--slate">{load.circuitNumbers?.join("-") ?? load.circuitNumber}</td>
-                          <td className="res-td res-td--amber">{load.circuitLoadType}</td>
-                          <td className="res-td res-td--dark res-td--bold">{load.label}</td>
-                          <td className="res-td">{load.voltageKV * 1000}</td>
-                          <td className={`res-td res-td--mono${load.cableKVAcc ? "" : " res-td--light"}`}>
-                            {load.cableKVAcc ? formatNumber(load.cableKVAcc, 1) : "—"}
-                          </td>
-                          <td className="res-td res-td--amber res-td--bold res-td--mono">{formatNumber(terminalKVAcc, 1)} kVA</td>
-                          <td className="res-td res-td--mono">{formatNumber(terminalIcc, 1)} A</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <div className="card-section-label">Cargas Resistivas — kVAcc en Terminal</div>
+              <KVTable rows={loadResults.filter(l => l.loadType === "resistive").flatMap(load => {
+                const vKV           = load.voltageKV ?? busVoltageKV;
+                const terminalKVAcc = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
+                const terminalIcc   = terminalKVAcc / (Math.sqrt(3) * vKV);
+                return [
+                  { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
+                  { label: "Tipo",             value: load.circuitLoadType,  color: "amber" },
+                  { label: "Tensión (V)",      value: load.voltageKV * 1000 },
+                  { label: "kVAcc conductor",  value: load.cableKVAcc ? `${formatNumber(load.cableKVAcc, 1)} kVA` : "—", color: "amber" },
+                  { label: "kVAcc terminal",   value: `${formatNumber(terminalKVAcc, 1)} kVA`, bold: true, color: "amber" },
+                  { label: "Icc terminal (A)", value: `${formatNumber(terminalIcc, 1)} A`,     bold: true, color: "amber" },
+                ];
+              })} />
             </Card>
           )}
 
@@ -418,8 +364,8 @@ export default function App() {
             <div>
               <div className="summary-section__title">Corrientes — Barra {busVoltageKV * 1000} V</div>
               {[
-                { label: "Icc simétrica",                         value: symmetricShortCircuitCurrent,  color: "blue", unit: "A" },
-                { label: `Icc asimétrica ×${asymmetricFactor}`,   value: asymmetricShortCircuitCurrent, color: "red",  unit: "A" },
+                { label: "Icc simétrica",                        value: symmetricShortCircuitCurrent,  color: "blue", unit: "A" },
+                { label: `Icc asimétrica ×${asymmetricFactor}`,  value: asymmetricShortCircuitCurrent, color: "red",  unit: "A" },
               ].map(({ label, value, color, unit }) => (
                 <div key={label} className="summary-row">
                   <span className="summary-row__label">{label}</span>
