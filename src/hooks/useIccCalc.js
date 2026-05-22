@@ -3,7 +3,7 @@ import { getZ, series, cableKVA } from "../utils/cableUtils";
 import { drawDiagram } from "../utils/diagram";
 
 const DEFAULT_JSON = JSON.stringify({
-  generalLoadtension: "208V",
+  systemVoltage: "208V",
   networkOperator: {
     tesion: 13.2,
     Icc: 10,
@@ -39,7 +39,7 @@ const Z_PCT_BY_KVA = {
 };
 
 function transformJsonInput(input) {
-  const busVoltageV  = parseFloat(String(input.generalLoadtension));
+  const busVoltageV  = parseFloat(String(input.systemVoltage));
   const busVoltageKV = busVoltageV / 1000;
 
   const grid = {
@@ -127,7 +127,10 @@ function transformJsonInput(input) {
 
 function runCalc(data) {
   const { grid, sources, loads } = data;
-  const gridKVAcc = grid.kVAcc > 0 ? grid.kVAcc : Math.sqrt(3) * grid.kV * (grid.Icc * 1000);
+  const hasGridData = grid.kV != null && grid.kV > 0 && grid.Icc != null && grid.Icc > 0;
+  const gridKVAcc = hasGridData
+    ? (grid.kVAcc > 0 ? grid.kVAcc : Math.sqrt(3) * grid.kV * (grid.Icc * 1000))
+    : 0;
 
   let upstreamKVAcc = 0;
   let generatorBusKVAcc = 0;
@@ -138,14 +141,15 @@ function runCalc(data) {
 
     let inCableKVAcc = null;
     let kVAccAtSourceInput = gridKVAcc;
-    if (source.type !== "generator" && source.inCable.enabled) {
+    if (source.type !== "generator" && source.inCable.enabled && hasGridData) {
       inCableKVAcc       = cableKVA(grid.kV, getZ(source.inCable.type, source.inCable.gauge, source.inCable.material, source.inCable.canal), source.inCable.len);
       kVAccAtSourceInput = series(gridKVAcc, inCableKVAcc);
     }
 
+    // Sin datos de red, el transformador es el único limitante (red tratada como bus infinito)
     const kVAccPassingThrough = source.type === "generator"
       ? equipmentKVAcc
-      : series(kVAccAtSourceInput, equipmentKVAcc);
+      : (hasGridData ? series(kVAccAtSourceInput, equipmentKVAcc) : equipmentKVAcc);
 
     let outCableKVAcc = null;
     let kVAccAtSourceOutput = kVAccPassingThrough;

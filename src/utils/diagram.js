@@ -10,6 +10,7 @@ export function drawDiagram(canvas, data, results) {
   ctx.setLineDash([]);
 
   const { srcResults, loadResults, busKVAcc, gridKVAcc, upstreamKVAcc } = results;
+  const hasGridData = data.grid.kV != null && data.grid.kV > 0 && data.grid.Icc != null && data.grid.Icc > 0;
   const busVoltageKV = srcResults[0]?.kVsec ?? 0.208;
   const asymmetricFactor = busVoltageKV < 0.6 ? 1.25 : 1.6;
 
@@ -170,15 +171,14 @@ export function drawDiagram(canvas, data, results) {
   const loadCount       = loadResults.length;
   const loadSpacing     = Math.max(110, Math.min(150, (canvasWidth - 120) / Math.max(loadCount, 1)));
   const busBarHalfWidth = Math.max(180, loadCount * loadSpacing / 2 + 40);
-  const diagramCenterX  = busBarHalfWidth + 60;
+  // Bus bar centered horizontally: first source at diagramCenterX, last at diagramCenterX + (n-1)*230
+  const diagramCenterX  = canvasWidth / 2 - (srcResults.length - 1) * 230 / 2;
 
-  let currentY = 30;
+  // ── Global layout pre-computation (all Y relative to diagramTopY = 0) ───────
 
-  // ── Global layout pre-computation ───────────────────────────────────────────
-
-  const SEGMENT_LENGTH = 22;
-  const diagramTopY     = currentY;
-  const conductorStartY = diagramTopY + 40;   // start of transformer conductor (below grid symbol)
+  const SEGMENT_LENGTH  = 22;
+  const diagramTopY     = 0;
+  const conductorStartY = diagramTopY + 40;
   const flowPairAtGridY = conductorStartY + SEGMENT_LENGTH + 4;
 
   // Reference transformer drives the vertical layout for ALL sources
@@ -187,7 +187,9 @@ export function drawDiagram(canvas, data, results) {
   const refFlowPairBeforeTransformerY = refHasInCable
     ? flowPairAtGridY + 12 + SEGMENT_LENGTH + 11 + 11 + SEGMENT_LENGTH + 4
     : flowPairAtGridY;
-  const globalTransformerY          = refFlowPairBeforeTransformerY + 12 + SEGMENT_LENGTH + 35;
+  const globalTransformerY = hasGridData
+    ? refFlowPairBeforeTransformerY + 12 + SEGMENT_LENGTH + 35
+    : diagramTopY + 50;
   const globalFlowPairAtTransformerY = globalTransformerY + 35 + SEGMENT_LENGTH + 4;
 
   // globalBusBarY = max across all source outCable configs
@@ -199,6 +201,30 @@ export function drawDiagram(canvas, data, results) {
     }
     return Math.max(maxY, globalFlowPairAtTransformerY + 12 + SEGMENT_LENGTH + 4);
   }, 0);
+
+  // ── Vertical centering: compute content bounding box ────────────────────────
+
+  const loadFlowPair1Y = globalBusBarY + 4 + SEGMENT_LENGTH + 4;
+  let maxLoadBottomY = loadFlowPair1Y;
+  loadResults.forEach(load => {
+    let flowPairBeforeSymbolY = loadFlowPair1Y;
+    if (load.cable?.enabled && load.cableKVAcc) {
+      const lb = loadFlowPair1Y + 12 + SEGMENT_LENGTH + 11;
+      flowPairBeforeSymbolY = lb + 11 + SEGMENT_LENGTH + 4;
+    }
+    const symY   = flowPairBeforeSymbolY + 12 + SEGMENT_LENGTH + 24;
+    const bottom = symY + (load.loadType === "inducción" ? 86 : 66);
+    maxLoadBottomY = Math.max(maxLoadBottomY, bottom);
+  });
+
+  const contentTopY    = hasGridData ? diagramTopY : Math.max(diagramTopY, globalTransformerY - 35);
+  const contentHeight  = maxLoadBottomY - contentTopY;
+  const verticalOffset = Math.round((canvasHeight - contentHeight) / 2) - contentTopY;
+
+  ctx.save();
+  ctx.translate(0, verticalOffset);
+
+  let currentY = globalBusBarY;
 
   // ── Source sections ──────────────────────────────────────────────────────────
 
@@ -242,7 +268,7 @@ export function drawDiagram(canvas, data, results) {
       source.kVAccPassingThrough.toFixed(2)    + " kVA",
       downstreamKVAbelowTransformer.toFixed(2) + " kVA",
     ];
-    if (!isGenerator) {
+    if (!isGenerator && hasGridData) {
       srcLabelTexts.push(
         gridKVAcc.toFixed(2)           + " kVA",
         downstreamKVAatGrid.toFixed(2) + " kVA",
@@ -270,12 +296,12 @@ export function drawDiagram(canvas, data, results) {
     // ── Render pass ──────────────────────────────────────────────────────────
 
     // 1. Vertical conductor line
-    const conductorTopY = isGenerator ? (transformerY - 24) : conductorStartY;
+    const conductorTopY = isGenerator ? (transformerY - 24) : (hasGridData ? conductorStartY : transformerY - 35);
     drawVerticalLine(sourceCenterX, conductorTopY, busBarY);
 
     // 2. Symbols
     if (!isGenerator) {
-      drawGridSymbol(sourceCenterX, diagramTopY);
+      if (hasGridData) drawGridSymbol(sourceCenterX, diagramTopY);
       if (incomingCableBoxY !== null) drawImpedanceBox(sourceCenterX, incomingCableBoxY, source.inCableKVAcc.toFixed(2), srcTextStartX);
       drawTransformer(sourceCenterX, transformerY);
     } else {
@@ -289,9 +315,11 @@ export function drawDiagram(canvas, data, results) {
 
     // 3. Right-side technical data
     if (!isGenerator) {
-      drawText(`Un: ${data.grid.kV} kV`,                          sourceLabelX, diagramTopY + 4,  11, "#222");
-      drawText(`Icc: ${data.grid.Icc.toFixed(1)} kA`,             sourceLabelX, diagramTopY + 18, 11, "#222");
-      drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, diagramTopY + 32, 11, "#c00", true);
+      if (hasGridData) {
+        drawText(`Un: ${data.grid.kV ?? '--'} kV`,                          sourceLabelX, diagramTopY + 4,  11, "#222");
+        drawText(`Icc: ${data.grid.Icc != null ? data.grid.Icc.toFixed(1) : '--'} kA`, sourceLabelX, diagramTopY + 18, 11, "#222");
+        drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, diagramTopY + 32, 11, "#c00", true);
+      }
       drawText(`kVA:  ${source.kVA}`,     sourceLabelX, transformerY - 28, 11, "#222");
       drawText(`Un:  ${source.kVsec} kV`, sourceLabelX, transformerY - 14, 11, "#222");
       drawText(`Z%:  ${source.zPct}%`,    sourceLabelX, transformerY,      11, "#222");
@@ -304,7 +332,7 @@ export function drawDiagram(canvas, data, results) {
 
     // 4. Flow pair labels (left of conductor for transformers, right for generators)
     const flowSide = isGenerator ? "right" : "left";
-    if (!isGenerator) {
+    if (!isGenerator && hasGridData) {
       // Horizontal convergence line spanning only the text block width, at arrow mid-level
       const textBlockEndX = sourceCenterX - 52; // conductorX - 8(tip gap) - 40(arrow) - 4(text gap)
       drawLine(srcTextStartX, flowPairAtGridY, textBlockEndX, flowPairAtGridY, 1, "#888");
@@ -319,7 +347,6 @@ export function drawDiagram(canvas, data, results) {
 
   // ── Bus bar — drawn once spanning all sources and the load zone ──────────────
 
-  currentY = globalBusBarY;
   const busBarLeftX  = diagramCenterX - busBarHalfWidth;
   const busBarRightX = diagramCenterX + (srcResults.length - 1) * 230 + busBarHalfWidth;
   drawBusBar(busBarLeftX, busBarRightX, currentY);
@@ -426,4 +453,6 @@ export function drawDiagram(canvas, data, results) {
       drawText(`Iasc: ${iascAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 66, 11, "#333", "center");
     }
   });
+
+  ctx.restore();
 }
