@@ -9,7 +9,7 @@ const DEFAULT_JSON = JSON.stringify({
     Icc: 10,
     feeder: { type: "MT15", material: "Cobre", conduit: "PVC", awg: "1/0", long: 50 },
   },
-  transformador: {
+  mainSource: {
     kva: 630,
     feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 500, long: 50 },
   },
@@ -49,14 +49,14 @@ function transformJsonInput(input) {
   };
 
   const netFeeder = input.networkOperator.feeder;
-  const trFeeder  = input.transformador.feeder;
+  const trFeeder  = input.mainSource.feeder;
 
   const sources = [{
     id: 1, type: "transformer", label: "TR",
-    kVA:   input.transformador.kva,
+    kVA:   input.mainSource.kva,
     kVpri: input.networkOperator.tesion,
     kVsec: busVoltageKV,
-    zPct:  input.transformador.zPct ?? Z_PCT_BY_KVA[String(input.transformador.kva)] ?? 6,
+    zPct:  input.mainSource.zPct ?? Z_PCT_BY_KVA[String(input.mainSource.kva)] ?? 6,
     xdpp:  0.17,
     inCable: {
       enabled:  true,
