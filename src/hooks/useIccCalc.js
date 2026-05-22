@@ -19,7 +19,7 @@ const DEFAULT_JSON = JSON.stringify({
   },
   circuits: [
     {
-      active: true, name: "Bomba", loadType: "Motor", type: "monofasico",
+      active: true, name: "Bomba", loadType: "Inducción", type: "monofasico",
       voltage: 208, load: "2486.67", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
       circuitNumber: 1, circuitNumbers: [1],
     },
@@ -95,14 +95,14 @@ function transformJsonInput(input) {
   const loads = input.circuits
     .filter(c => c.active)
     .map((circuit, index) => {
-      const isMotor   = circuit.loadType === "Motor";
+      const isMotor   = circuit.loadType === "Inducción";
       const voltageKV = circuit.voltage / 1000;
       const loadVA    = parseFloat(circuit.load);
       const hp        = isMotor ? (loadVA * FP) / 746 : null;
 
       return {
         id:              index + 1,
-        loadType:        isMotor ? "motor" : "resistive",
+        loadType:        isMotor ? "inducción" : "resistive",
         label:           circuit.name,
         hp,
         voltageKV,

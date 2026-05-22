@@ -173,15 +173,6 @@ export function drawDiagram(canvas, data, results) {
   const diagramCenterX  = busBarHalfWidth + 60;
 
   let currentY = 30;
-  drawText("DIAGRAMA DE kVA's DE CORTOCIRCUITO EQUIVALENTES", canvasWidth / 2, currentY, 14, "#111", "center", true);
-  currentY += 24;
-
-  ctx.setLineDash([]);
-  ctx.strokeStyle = "#aaa"; ctx.lineWidth = 0.8;
-  ctx.strokeRect(diagramCenterX - 130, currentY, 260, 24);
-  ctx.fillStyle = "#fff"; ctx.fillRect(diagramCenterX - 130, currentY, 260, 24);
-  drawText(`Nivel de Tensión:  ${data.grid.kV} kV  /  ${busVoltageKV} kV`, diagramCenterX, currentY + 16, 11, "#333", "center");
-  currentY += 38;
 
   // ── Global layout pre-computation ───────────────────────────────────────────
 
