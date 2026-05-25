@@ -3,32 +3,39 @@ import { getZ, series, cableKVA } from "../utils/cableUtils";
 import { drawDiagram } from "../utils/diagram";
 
 const DEFAULT_JSON = JSON.stringify({
-  systemVoltage: "208V",
   networkOperator: {
     tesion: 13.2,
     Icc: 10,
-    feeder: { type: "MT15", material: "Cobre", conduit: "PVC", awg: "1/0", long: 50 },
   },
-  mainSource: {
-    kva: 630,
-    feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 500, long: 50 },
+  primaryServiceFeeder: { type: "MT15", material: "Cobre", conduit: "PVC", awg: "1/0", long: 50 },
+  mainSource: { kva: 630 },
+  generator: { kva: null },
+  generatorFeeder: { type: null, material: null, conduit: null, awg: null, long: null },
+  analisisCargas: {
+    tableros: [
+      {
+        id: "tablero-1",
+        config: {
+          name: "TD", boardType: "trifasico", switchboardLength: 6,
+          systemVoltage: 208, environmentTemperature: 30,
+          material: "Cobre", conduit: "PVC", wireQuantity: 3, temperatureAWG: 60,
+        },
+        feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 500, long: 50 },
+        circuits: [
+          {
+            active: true, name: "Bomba", loadType: "Inducción", type: "monofasico",
+            voltage: 208, load: "2486.67", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
+            circuitNumber: 1, circuitNumbers: [1],
+          },
+          {
+            active: true, name: "General", loadType: "Iluminacion", type: "monofasico",
+            voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
+            circuitNumber: 3, circuitNumbers: [3],
+          },
+        ],
+      },
+    ],
   },
-  generator: {
-    kva: null,
-    feeder: { type: null, material: null, conduit: null, awg: null, long: null },
-  },
-  circuits: [
-    {
-      active: true, name: "Bomba", loadType: "Inducción", type: "monofasico",
-      voltage: 208, load: "2486.67", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
-      circuitNumber: 1, circuitNumbers: [1],
-    },
-    {
-      active: true, name: "General", loadType: "Iluminacion", type: "monofasico",
-      voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
-      circuitNumber: 3, circuitNumbers: [3],
-    },
-  ],
 }, null, 2);
 
 const FP = 0.9;
@@ -38,8 +45,8 @@ const Z_PCT_BY_KVA = {
   "150": 6, "250": 6, "500": 6, "630": 6,
 };
 
-function transformJsonInput(input) {
-  const busVoltageV  = parseFloat(String(input.systemVoltage));
+function transformJsonInput(input, tablero) {
+  const busVoltageV  = tablero.config?.systemVoltage ?? parseFloat(String(input.systemVoltage));
   const busVoltageKV = busVoltageV / 1000;
 
   const grid = {
@@ -48,8 +55,8 @@ function transformJsonInput(input) {
     kVAcc: 0,
   };
 
-  const netFeeder = input.networkOperator.feeder;
-  const trFeeder  = input.mainSource.feeder;
+  const psf = input.primaryServiceFeeder;
+  const mf  = tablero.feeder;
 
   const sources = [{
     id: 1, type: "transformer", label: "TR",
@@ -59,25 +66,25 @@ function transformJsonInput(input) {
     zPct:  input.mainSource.zPct ?? Z_PCT_BY_KVA[String(input.mainSource.kva)] ?? 6,
     xdpp:  0.17,
     inCable: {
-      enabled:  true,
-      type:     netFeeder.type,
-      gauge:    String(netFeeder.awg),
-      material: netFeeder.material,
-      canal:    netFeeder.conduit,
-      len:      netFeeder.long,
+      enabled:  psf?.awg != null,
+      type:     psf?.type,
+      gauge:    psf?.awg != null ? String(psf.awg) : null,
+      material: psf?.material,
+      canal:    psf?.conduit,
+      len:      psf?.long,
     },
     outCable: {
-      enabled:  true,
-      type:     trFeeder.type,
-      gauge:    String(trFeeder.awg),
-      material: trFeeder.material,
-      canal:    trFeeder.conduit,
-      len:      trFeeder.long,
+      enabled:  mf?.awg != null,
+      type:     mf?.type,
+      gauge:    mf?.awg != null ? String(mf.awg) : null,
+      material: mf?.material,
+      canal:    mf?.conduit,
+      len:      mf?.long,
     },
   }];
 
   if (input.generator?.kva != null) {
-    const gf = input.generator.feeder;
+    const gf = input.generatorFeeder;
     sources.push({
       id: 2, type: "generator", label: "GEN",
       kVA:   input.generator.kva,
@@ -92,7 +99,7 @@ function transformJsonInput(input) {
     });
   }
 
-  const loads = input.circuits
+  const loads = (tablero.circuits ?? [])
     .filter(c => c.active)
     .map((circuit, index) => {
       const isMotor   = circuit.loadType === "Inducción";
@@ -207,20 +214,24 @@ function runCalc(data) {
 }
 
 export function useIccCalc() {
-  const [jsonText,  setJsonText]  = useState(DEFAULT_JSON);
-  const [jsonError, setJsonError] = useState(null);
-  const [data,      setData]      = useState(null);
-  const [view,      setView]      = useState("json");
-  const [result,    setResult]    = useState(null);
-  const canvasRef                 = useRef(null);
+  const [jsonText,       setJsonText]       = useState(DEFAULT_JSON);
+  const [jsonError,      setJsonError]      = useState(null);
+  const [tableroResults, setTableroResults] = useState([]);
+  const [activeTab,      setActiveTab]      = useState(0);
+  const [view,           setView]           = useState("json");
+  const canvasRef = useRef(null);
 
   const parseAndCalculate = () => {
     try {
-      const parsed          = JSON.parse(jsonText);
-      const transformedData = transformJsonInput(parsed);
-      const calcResult      = runCalc(transformedData);
-      setData(transformedData);
-      setResult(calcResult);
+      const parsed   = JSON.parse(jsonText);
+      const tableros = parsed.analisisCargas?.tableros ?? [];
+      const results  = tableros.map(tablero => {
+        const data   = transformJsonInput(parsed, tablero);
+        const result = runCalc(data);
+        return { id: tablero.id, name: tablero.config?.name ?? tablero.id, data, result };
+      });
+      setTableroResults(results);
+      setActiveTab(0);
       setJsonError(null);
       setView("results");
     } catch (e) {
@@ -229,21 +240,23 @@ export function useIccCalc() {
   };
 
   useEffect(() => {
-    if (view === "results" && result && data && canvasRef.current) {
-      const canvasElement  = canvasRef.current;
-      const loadCount      = result.loadResults.length;
-      const sourceCount    = result.srcResults.length;
-      canvasElement.width  = Math.max(560, 120 + loadCount * 140 + sourceCount * 230);
+    if (view !== "results" || !tableroResults.length) return;
+    const { data, result } = tableroResults[activeTab];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-      const hasMediumVoltageCable = data.sources[0]?.inCable?.enabled  ? 1 : 0;
-      const hasLowVoltageCable    = data.sources[0]?.outCable?.enabled ? 1 : 0;
-      const hasLoadCable          = data.loads[0]?.cable?.enabled      ? 1 : 0;
-      const baseCanvasHeight      = 300 + hasMediumVoltageCable * 80 + hasLowVoltageCable * 80 + hasLoadCable * 80 + 200;
-      canvasElement.height        = Math.max(820, baseCanvasHeight);
+    const loadCount   = result.loadResults.length;
+    const sourceCount = result.srcResults.length;
+    canvas.width  = Math.max(560, 120 + loadCount * 140 + sourceCount * 230);
 
-      drawDiagram(canvasElement, data, result);
-    }
-  }, [view, result, data]);
+    const hasMediumVoltageCable = data.sources[0]?.inCable?.enabled  ? 1 : 0;
+    const hasLowVoltageCable    = data.sources[0]?.outCable?.enabled ? 1 : 0;
+    const hasLoadCable          = data.loads[0]?.cable?.enabled      ? 1 : 0;
+    const baseCanvasHeight      = 300 + hasMediumVoltageCable * 80 + hasLowVoltageCable * 80 + hasLoadCable * 80 + 200;
+    canvas.height = Math.max(820, baseCanvasHeight);
 
-  return { jsonText, setJsonText, jsonError, data, view, setView, result, canvasRef, parseAndCalculate };
+    drawDiagram(canvas, data, result);
+  }, [view, tableroResults, activeTab]);
+
+  return { jsonText, setJsonText, jsonError, tableroResults, activeTab, setActiveTab, view, setView, canvasRef, parseAndCalculate };
 }

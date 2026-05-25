@@ -348,6 +348,44 @@ $c-border-input: #cbd5e1;
   }
 }
 
+// ── Tabs bar ──────────────────────────────────────────────────────────────────
+
+.tabs-bar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  background: $bg-white;
+  border-bottom: 1px solid $c-border;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  padding: 6px 18px;
+  background: transparent;
+  border: 1px solid $c-border-input;
+  border-radius: 6px;
+  color: $c-slate-light;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &--active {
+    background: $c-blue-light;
+    border-color: $c-blue;
+    color: $c-blue;
+  }
+
+  &:not(&--active):hover {
+    background: $bg-surface;
+    border-color: $c-slate-lighter;
+    color: $c-slate-mid;
+  }
+}
+
 // ── Results body (two-column) ─────────────────────────────────────────────────
 
 .res-body {

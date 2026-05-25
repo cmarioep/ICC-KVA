@@ -188,8 +188,8 @@ function ParameterSummary({ data, result }) {
 export default function App() {
   const {
     jsonText, setJsonText, jsonError,
-    data, view,
-    result, canvasRef,
+    tableroResults, activeTab, setActiveTab,
+    view, canvasRef,
     parseAndCalculate,
   } = useIccCalc();
 
@@ -220,6 +220,10 @@ export default function App() {
   );
 
   /* ═══ RESULTS ═══ */
+  const activeTablero = tableroResults[activeTab] ?? tableroResults[0];
+  if (!activeTablero) return null;
+  const { data, result } = activeTablero;
+
   const {
     srcResults, loadResults, busKVAcc, upstreamKVAcc, downstreamKVAcc,
     symmetricShortCircuitCurrent, asymmetricShortCircuitCurrent,
@@ -228,6 +232,17 @@ export default function App() {
 
   return (
     <div className="app app--results">
+      <div className="tabs-bar">
+        {tableroResults.map((t, i) => (
+          <button
+            key={t.id}
+            className={`tab-btn${i === activeTab ? " tab-btn--active" : ""}`}
+            onClick={() => setActiveTab(i)}
+          >
+            {t.name}
+          </button>
+        ))}
+      </div>
       <div className="res-body">
         {/* Canvas — 70% */}
         <div className="res-main">
