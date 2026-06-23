@@ -48,8 +48,10 @@ export function series(a, b) {
   return 1 / (1 / a + 1 / b);
 }
 
-export function cableKVA(kV, impedancePerKm, lengthMeters) {
+// conductorsPerPhase parallel conductors divide the effective impedance by N.
+export function cableKVA(kV, impedancePerKm, lengthMeters, conductorsPerPhase = 1) {
   if (!impedancePerKm || !lengthMeters || lengthMeters <= 0) return Infinity;
+  const parallel = conductorsPerPhase > 0 ? conductorsPerPhase : 1;
   const lengthKilometers = lengthMeters / 1000;
-  return (1000 * kV * kV) / (impedancePerKm * lengthKilometers);
+  return (1000 * kV * kV) / ((impedancePerKm / parallel) * lengthKilometers);
 }

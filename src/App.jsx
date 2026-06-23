@@ -81,7 +81,8 @@ function ParameterSummary({ data, result }) {
               { label: "Calibre", value: firstSource.inCable.gauge },
               { label: "Material", value: firstSource.inCable.material ?? "Cobre" },
               { label: "Longitud (m)", value: firstSource.inCable.len },
-              { label: "Z (Ω)", value: (getZ(firstSource.inCable.type, firstSource.inCable.gauge, firstSource.inCable.material, firstSource.inCable.canal) * firstSource.inCable.len / 1000).toFixed(4) },
+              ...(firstSource.inCable.parallel > 1 ? [{ label: "Cond./fase", value: firstSource.inCable.parallel }] : []),
+              { label: "Z (Ω)", value: (getZ(firstSource.inCable.type, firstSource.inCable.gauge, firstSource.inCable.material, firstSource.inCable.canal) * firstSource.inCable.len / 1000 / (firstSource.inCable.parallel ?? 1)).toFixed(4) },
               { label: "kVAcc cable", value: firstSource.inCableKVAcc?.toFixed(2) ?? "—", color: "blue" },
               { label: "kVAcc entrada eq.", value: `${firstSource.kVAccAtSourceInput?.toFixed(2) ?? "—"} kVA`, bold: true, color: "blue" },
             ]} />
@@ -110,7 +111,8 @@ function ParameterSummary({ data, result }) {
               { label: "Calibre", value: firstSource.outCable.gauge },
               { label: "Material", value: firstSource.outCable.material ?? "Cobre" },
               { label: "Longitud (m)", value: firstSource.outCable.len },
-              { label: "Z (Ω)", value: (getZ(firstSource.outCable.type, firstSource.outCable.gauge, firstSource.outCable.material, firstSource.outCable.canal) * firstSource.outCable.len / 1000).toFixed(4) },
+              ...(firstSource.outCable.parallel > 1 ? [{ label: "Cond./fase", value: firstSource.outCable.parallel }] : []),
+              { label: "Z (Ω)", value: (getZ(firstSource.outCable.type, firstSource.outCable.gauge, firstSource.outCable.material, firstSource.outCable.canal) * firstSource.outCable.len / 1000 / (firstSource.outCable.parallel ?? 1)).toFixed(4) },
               { label: "kVAcc cable", value: firstSource.outCableKVAcc?.toFixed(2) ?? "—", color: "blue" },
               { label: "kVAcc a barra", value: `${firstSource.kVAccAtSourceOutput.toFixed(2)} kVA`, bold: true, color: "blue" },
               { label: "Icc en barra (A)", value: `${(firstSource.kVAccAtSourceOutput / (Math.sqrt(3) * firstSource.kVsec)).toFixed(1)} A`, bold: true, color: "amber" },
@@ -130,7 +132,8 @@ function ParameterSummary({ data, result }) {
                 { label: "Calibre", value: load.cable.gauge },
                 { label: "Material", value: load.cable.material ?? "Cobre" },
                 { label: "Longitud (m)", value: load.cable.len },
-                { label: "Z (Ω)", value: (getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal) * load.cable.len / 1000).toFixed(4) },
+                ...(load.cable.parallel > 1 ? [{ label: "Cond./fase", value: load.cable.parallel }] : []),
+                { label: "Z (Ω)", value: (getZ(load.cable.type, load.cable.gauge, load.cable.material, load.cable.canal) * load.cable.len / 1000 / (load.cable.parallel ?? 1)).toFixed(4) },
                 { label: "kVAcc cable", value: load.cableKVAcc?.toFixed(2) ?? "—", color: "blue" },
                 { label: "kVAcc terminal", value: `${terminalKVAcc.toFixed(2)} kVA`, bold: true, color: "blue" },
                 { label: "Icc terminal (A)", value: `${terminalIcc.toFixed(1)} A`, bold: true, color: "amber" },
@@ -182,13 +185,128 @@ function ParameterSummary({ data, result }) {
   );
 }
 
+/* ── RESUMEN UNIFICADO: BARRA PRINCIPAL ──────────────────── */
+function UnifiedMainSummary({ data, result }) {
+  const { gridKVAcc, srcResults, mainBusKVAcc, mainBusIcc } = result;
+  const tr = srcResults[0];
+
+  return (
+    <div className="rp">
+      <div className="rp__header">
+        <div className="rp__title">Barra Principal</div>
+      </div>
+      <div className="rp__body">
+        <SectionTitle>Parámetros Operador de Red</SectionTitle>
+        <KVTable rows={[
+          { label: "Nivel de Tensión [kV]", value: data.grid.kV, bold: true, color: "amber" },
+          { label: "Corriente Cortocircuito 3Ø [kA]", value: data.grid.Icc },
+          { label: "kVAcc red", value: `${gridKVAcc.toFixed(2)} kVA`, bold: true, color: "blue" },
+        ]} />
+
+        {tr.inCable?.enabled && tr.inCableKVAcc != null && (
+          <>
+            <SectionTitle>Acometida de Media Tensión</SectionTitle>
+            <KVTable rows={[
+              { label: "Calibre", value: tr.inCable.gauge },
+              { label: "Material", value: tr.inCable.material ?? "Cobre" },
+              { label: "Longitud (m)", value: tr.inCable.len },
+              ...(tr.inCable.parallel > 1 ? [{ label: "Cond./fase", value: tr.inCable.parallel }] : []),
+              { label: "kVAcc cable", value: tr.inCableKVAcc.toFixed(2), color: "blue" },
+              { label: "kVAcc entrada eq.", value: `${tr.kVAccAtSourceInput.toFixed(2)} kVA`, bold: true, color: "blue" },
+            ]} />
+          </>
+        )}
+
+        <SectionTitle>Transformador</SectionTitle>
+        <KVTable rows={[
+          { label: "kVA nominal", value: tr.kVA },
+          { label: "Un (kV)", value: tr.kVsec },
+          { label: "Impedancia Z%", value: `${tr.zPct}%` },
+          { label: "kVAcc equipo", value: tr.equipmentKVAcc.toFixed(2), color: "blue" },
+          { label: "kVAcc pasante", value: `${tr.kVAccPassingThrough.toFixed(2)} kVA`, bold: true, color: "blue" },
+        ]} />
+
+        {tr.outCable?.enabled && tr.outCableKVAcc != null && (
+          <>
+            <SectionTitle>Alimentador Principal</SectionTitle>
+            <KVTable rows={[
+              { label: "Calibre", value: tr.outCable.gauge },
+              { label: "Material", value: tr.outCable.material ?? "Cobre" },
+              { label: "Longitud (m)", value: tr.outCable.len },
+              ...(tr.outCable.parallel > 1 ? [{ label: "Cond./fase", value: tr.outCable.parallel }] : []),
+              { label: "kVAcc cable", value: tr.outCableKVAcc.toFixed(2), color: "blue" },
+            ]} />
+          </>
+        )}
+
+        <KVTable rows={[
+          { type: "total", label: "kVAcc Barra Principal", value: `${formatNumber(mainBusKVAcc, 1)} kVA`, color: "amber" },
+          { type: "total", label: "Icc Barra Principal", value: `${formatNumber(mainBusIcc, 1)} A`, color: "red" },
+        ]} />
+      </div>
+    </div>
+  );
+}
+
+/* ── RESUMEN UNIFICADO: SECCIÓN POR TABLERO ──────────────── */
+function TableroSummary({ tablero }) {
+  const {
+    name, feeder, feederKVAcc, upstreamAtBus, loadResults,
+    busKVAcc, downstreamKVAcc, busVoltageKV,
+    symmetricShortCircuitCurrent, asymmetricShortCircuitCurrent,
+  } = tablero;
+
+  return (
+    <Card>
+      <div className="card-section-label">{name}</div>
+
+      {feeder?.enabled && feederKVAcc != null && (
+        <KVTable rows={[
+          { type: "header", label: "Alimentador del Tablero" },
+          { label: "Calibre", value: feeder.gauge },
+          { label: "Material", value: feeder.material ?? "Cobre" },
+          { label: "Longitud (m)", value: feeder.len },
+          ...(feeder.parallel > 1 ? [{ label: "Cond./fase", value: feeder.parallel }] : []),
+          { label: "kVAcc alimentador", value: feederKVAcc.toFixed(2), color: "blue" },
+        ]} />
+      )}
+
+      <KVTable rows={[
+        { label: "kVAcc aguas arriba", value: `${formatNumber(upstreamAtBus, 1)} kVA`, color: "blue" },
+        { label: "kVAcc motores", value: `${formatNumber(downstreamKVAcc, 1)} kVA`, color: "green" },
+        { type: "total", label: "kVAcc en barra", value: `${formatNumber(busKVAcc, 1)} kVA`, color: "amber" },
+        { type: "total", label: "Icc simétrica", value: `${formatNumber(symmetricShortCircuitCurrent, 1)} A`, color: "blue" },
+        { type: "total", label: "Icc asimétrica", value: `${formatNumber(asymmetricShortCircuitCurrent, 1)} A`, color: "red" },
+      ]} />
+
+      {loadResults.length > 0 && (
+        <KVTable rows={loadResults.flatMap(load => {
+          const vKV = load.voltageKV ?? busVoltageKV;
+          const terminalUpstream = load.cableKVAcc ? series(upstreamAtBus, load.cableKVAcc) : upstreamAtBus;
+          const terminalIcc = (terminalUpstream + (load.motorKVAcc ?? 0)) / (Math.sqrt(3) * vKV);
+          return [
+            { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
+            { label: "Tipo", value: load.circuitLoadType, color: "amber" },
+            { label: "Calibre", value: load.cable.gauge },
+            ...(load.loadType === "inducción" ? [
+              { label: "Potencia (HP)", value: load.hp.toFixed(2), color: "green" },
+              { label: "kVAcc motor", value: load.motorKVAcc.toFixed(2), color: "green" },
+            ] : []),
+            { label: "Icc terminal (A)", value: `${formatNumber(terminalIcc, 1)} A`, bold: true, color: "amber" },
+          ];
+        })} />
+      )}
+    </Card>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════
    APP
 ══════════════════════════════════════════════════════════════ */
 export default function App() {
   const {
     jsonText, setJsonText, jsonError,
-    tableroResults, activeTab, setActiveTab,
+    mode, unified, tableroResults, activeTab, setActiveTab,
     view, canvasRef,
     parseAndCalculate,
   } = useIccCalc();
@@ -219,7 +337,46 @@ export default function App() {
     </div>
   );
 
-  /* ═══ RESULTS ═══ */
+  /* ═══ RESULTS — UNIFICADO (varios tableros) ═══ */
+  if (mode === "unified" && unified) {
+    const { data, result } = unified;
+    const totalMotorKVAcc = result.tableros.reduce((sum, t) => sum + t.downstreamKVAcc, 0);
+
+    return (
+      <div className="app app--results">
+        <div className="res-body">
+          <div className="res-main">
+            <div className="kpi-strip">
+              {[
+                { label: "kVAcc Barra Principal", value: formatNumber(result.mainBusKVAcc, 1) + " kVA", color: "amber" },
+                { label: "Icc Barra Principal", value: formatNumber(result.mainBusIcc, 0) + " A", color: "blue" },
+                { label: "N° Tableros", value: String(result.tableros.length), color: "red" },
+                { label: "Contrib. Motores", value: formatNumber(totalMotorKVAcc, 1) + " kVA", color: "green" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className={`kpi-item kpi-item--${color}`}>
+                  <div className="kpi-item__label">{label}</div>
+                  <div className={`kpi-item__value kpi-item__value--${color}`}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="canvas-wrap">
+              <canvas ref={canvasRef} />
+            </div>
+          </div>
+
+          <aside className="res-aside">
+            <UnifiedMainSummary data={data} result={result} />
+            {result.tableros.map(tablero => (
+              <TableroSummary key={tablero.id} tablero={tablero} />
+            ))}
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══ RESULTS — INDIVIDUAL (un tablero) ═══ */
   const activeTablero = tableroResults[activeTab] ?? tableroResults[0];
   if (!activeTablero) return null;
   const { data, result } = activeTablero;
@@ -281,7 +438,8 @@ export default function App() {
                   { label: "Calibre", value: cable.gauge },
                   { label: "Material", value: cable.material ?? "Cobre" },
                   { label: "Longitud (m)", value: cable.len },
-                  { label: "Z (Ω)", value: (getZ(cable.type, cable.gauge, cable.material, cable.canal) * cable.len / 1000).toFixed(4) },
+                  ...(cable.parallel > 1 ? [{ label: "Cond./fase", value: cable.parallel }] : []),
+                  { label: "Z (Ω)", value: (getZ(cable.type, cable.gauge, cable.material, cable.canal) * cable.len / 1000 / (cable.parallel ?? 1)).toFixed(4) },
                 );
                 rows.push(
                   { label: "kVAcc fuente", value: `${formatNumber(source.equipmentKVAcc, 1)} kVA`, color: "blue" },
