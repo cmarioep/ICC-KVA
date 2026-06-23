@@ -49,33 +49,55 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const genX     = mainColX + 170;
 
   // ── Vertical layout (absolute Y from 0, vertically centered at the end) ───────
-  const SEG = 34;
+  // Segment lengths mirror the single-board diagram (drawDiagram) so feeders and
+  // conductor runs have the same dimensions as the single-tablero case.
+  const SEG = 22; // matches SEGMENT_LENGTH in drawDiagram
   const hasPsf        = transformer.inCable?.enabled && transformer.inCableKVAcc != null && hasGridData;
   const hasMainFeeder = transformer.outCable?.enabled && transformer.outCableKVAcc != null;
   const anyFeeder     = tableros.some(t => t.feeder?.enabled && t.feederKVAcc != null);
 
   const gridY = hasGridData ? 0 : null;
   const conductorTopY = hasGridData ? 40 : 0;
-  let cursorY = conductorTopY;
+  const flowAtGridY = conductorTopY + SEG + 4;
 
+  // grid → (PSF box) → transformer
   let psfBoxY = null;
-  if (hasPsf) { cursorY += SEG; psfBoxY = cursorY; cursorY += 11; }
+  let trafoApproachY = flowAtGridY;
+  if (hasPsf) {
+    psfBoxY = flowAtGridY + 12 + SEG + 11;
+    trafoApproachY = psfBoxY + 11 + SEG + 4;
+  }
+  const trafoY = hasGridData ? trafoApproachY + 12 + SEG + 35 : 50;
+  const flowAtTrafoY = trafoY + 35 + SEG + 4;
 
-  cursorY += SEG + 22;
-  const trafoY = cursorY;
-  cursorY += 35;
-
+  // transformer → (main feeder box) → main bus
   let mainFeederBoxY = null;
-  if (hasMainFeeder) { cursorY += SEG; mainFeederBoxY = cursorY; cursorY += 11; }
+  let mainBusY;
+  if (hasMainFeeder) {
+    mainFeederBoxY = flowAtTrafoY + 12 + SEG + 11;
+    const flowAfterMainFeederY = mainFeederBoxY + 11 + SEG + 4;
+    mainBusY = flowAfterMainFeederY + 12 + SEG + 4;
+  } else {
+    mainBusY = flowAtTrafoY + 12 + SEG + 4;
+  }
 
-  const mainBusY = cursorY + SEG;
-
+  // main bus → (per-tablero feeder box) → tablero bus
+  const feederFlow1Y = mainBusY + 4 + SEG + 4;
   let feederBoxY = null;
-  let tableroBusY = mainBusY + SEG;
-  if (anyFeeder) { feederBoxY = mainBusY + SEG; tableroBusY = feederBoxY + 11 + SEG; }
+  let tableroBusY;
+  if (anyFeeder) {
+    feederBoxY = feederFlow1Y + 12 + SEG + 11;
+    const feederFlow2Y = feederBoxY + 11 + SEG + 4;
+    tableroBusY = feederFlow2Y + 12 + SEG + 4;
+  } else {
+    tableroBusY = feederFlow1Y + 12 + SEG + 4;
+  }
 
-  const circuitBoxY    = tableroBusY + SEG;
-  const circuitSymbolY = circuitBoxY + 11 + SEG + 24;
+  // tablero bus → (circuit box) → circuit symbol
+  const circuitFlow1Y  = tableroBusY + 4 + SEG + 4;
+  const circuitBoxY    = circuitFlow1Y + 12 + SEG + 11;
+  const circuitFlow2Y  = circuitBoxY + 11 + SEG + 4;
+  const circuitSymbolY = circuitFlow2Y + 12 + SEG + 24;
 
   const hasMotor      = tableros.some(t => t.loadResults.some(l => l.loadType === "inducción"));
   const contentBottom = circuitSymbolY + (hasMotor ? 86 : 66);
