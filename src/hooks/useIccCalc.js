@@ -100,7 +100,7 @@ function transformJsonInput(input, tablero) {
   }
 
   const loads = (tablero.circuits ?? [])
-    .filter(c => c.active)
+    .filter(c => c.active && parseFloat(c.load) > 0 && c.loadType && c.voltage)
     .map((circuit, index) => {
       const isMotor   = circuit.loadType === "Inducción";
       const voltageKV = circuit.voltage / 1000;
