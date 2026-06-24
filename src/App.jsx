@@ -306,7 +306,7 @@ function TableroSummary({ tablero }) {
 export default function App() {
   const {
     jsonText, setJsonText, jsonError,
-    mode, unified, tableroResults, activeTab, setActiveTab,
+    mode, unified, tableroResults, activeTab,
     view, canvasRef,
     parseAndCalculate,
   } = useIccCalc();
@@ -340,26 +340,11 @@ export default function App() {
   /* ═══ RESULTS — UNIFICADO (varios tableros) ═══ */
   if (mode === "unified" && unified) {
     const { data, result } = unified;
-    const totalMotorKVAcc = result.tableros.reduce((sum, t) => sum + t.downstreamKVAcc, 0);
 
     return (
       <div className="app app--results">
         <div className="res-body">
           <div className="res-main">
-            <div className="kpi-strip">
-              {[
-                { label: "kVAcc Barra Principal", value: formatNumber(result.mainBusKVAcc, 1) + " kVA", color: "amber" },
-                { label: "Icc Barra Principal", value: formatNumber(result.mainBusIcc, 0) + " A", color: "blue" },
-                { label: "N° Tableros", value: String(result.tableros.length), color: "red" },
-                { label: "Contrib. Motores", value: formatNumber(totalMotorKVAcc, 1) + " kVA", color: "green" },
-              ].map(({ label, value, color }) => (
-                <div key={label} className={`kpi-item kpi-item--${color}`}>
-                  <div className="kpi-item__label">{label}</div>
-                  <div className={`kpi-item__value kpi-item__value--${color}`}>{value}</div>
-                </div>
-              ))}
-            </div>
-
             <div className="canvas-wrap">
               <canvas ref={canvasRef} />
             </div>
@@ -389,34 +374,9 @@ export default function App() {
 
   return (
     <div className="app app--results">
-      <div className="tabs-bar">
-        {tableroResults.map((t, i) => (
-          <button
-            key={t.id}
-            className={`tab-btn${i === activeTab ? " tab-btn--active" : ""}`}
-            onClick={() => setActiveTab(i)}
-          >
-            {t.name}
-          </button>
-        ))}
-      </div>
       <div className="res-body">
         {/* Canvas — 70% */}
         <div className="res-main">
-          <div className="kpi-strip">
-            {[
-              { label: "kVAcc Total en Barra", value: formatNumber(busKVAcc, 1) + " kVA", color: "amber" },
-              { label: "Icc Simétrica", value: formatNumber(symmetricShortCircuitCurrent, 0) + " A", color: "blue" },
-              { label: "Icc Asimétrica", value: formatNumber(asymmetricShortCircuitCurrent, 0) + " A", color: "red" },
-              { label: "Contrib. Motores", value: formatNumber(downstreamKVAcc, 1) + " kVA", color: "green" },
-            ].map(({ label, value, color }) => (
-              <div key={label} className={`kpi-item kpi-item--${color}`}>
-                <div className="kpi-item__label">{label}</div>
-                <div className={`kpi-item__value kpi-item__value--${color}`}>{value}</div>
-              </div>
-            ))}
-          </div>
-
           <div className="canvas-wrap">
             <canvas ref={canvasRef} />
           </div>
