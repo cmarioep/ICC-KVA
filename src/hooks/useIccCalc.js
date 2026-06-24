@@ -416,18 +416,23 @@ export function useIccCalc() {
       if (!unified) return;
       const { data, result } = unified;
 
-      const tableroWidths = result.tableros.map(t => Math.max(180, t.loadResults.length * 130));
-      const totalWidth    = tableroWidths.reduce((a, b) => a + b, 0) + (result.tableros.length - 1) * 60;
-      canvas.width  = Math.max(720, totalWidth + 160);
+      const tableroWidths  = result.tableros.map(t => Math.max(180, t.loadResults.length * 130));
+      const totalWidth     = tableroWidths.reduce((a, b) => a + b, 0) + (result.tableros.length - 1) * 60;
+      const intrinsicWidth = Math.max(720, totalWidth + 160);
 
-      const hasMediumVoltageCable = data.sources[0]?.inCable?.enabled ? 1 : 0;
-      const hasMainFeederCable    = data.sources[0]?.outCable?.enabled ? 1 : 0;
-      const hasTableroFeeder      = data.tableros.some(t => t.feeder.enabled) ? 1 : 0;
-      const hasCircuitCable       = data.tableros.some(t => t.loads.some(l => l.cable.enabled)) ? 1 : 0;
-      canvas.height = Math.max(940, 460 + hasMediumVoltageCable * 80 + hasMainFeederCable * 80 + hasTableroFeeder * 80 + hasCircuitCable * 80 + 200);
+      // drawUnifiedDiagram reads canvas.width as the intrinsic drawing width, then resizes
+      // the bitmap to fit the container at device resolution — so reset it before each draw.
+      const render = () => {
+        canvas.width = intrinsicWidth;
+        drawUnifiedDiagram(canvas, data, result);
+      };
+      render();
 
-      drawUnifiedDiagram(canvas, data, result);
-      return;
+      // Re-render (re-fit) when the container size changes, keeping the diagram crisp.
+      const ro = canvas.parentElement && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(render) : null;
+      if (ro) ro.observe(canvas.parentElement);
+      return () => ro?.disconnect();
     }
 
     if (!tableroResults.length) return;

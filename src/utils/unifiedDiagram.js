@@ -7,11 +7,7 @@ import { createPrimitives } from "./diagramPrimitives";
 export function drawUnifiedDiagram(canvas, data, results) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  const canvasWidth = canvas.width, canvasHeight = canvas.height;
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-  ctx.setLineDash([]);
+  const canvasWidth = canvas.width;
 
   const {
     drawVerticalLine, drawText, drawTextWithKVAccSubscript, drawRightArrow,
@@ -95,13 +91,37 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const circuitSymbolY = circuitFlow2Y + 12 + SEG + 24;
 
   const hasMotor      = tableros.some(t => t.loadResults.some(l => l.loadType === "inducción"));
-  const contentBottom = circuitSymbolY + (hasMotor ? 86 : 66);
+  const contentBottom = circuitSymbolY + (hasMotor ? 72 : 58);
   const contentTopY   = hasGridData ? 0 : trafoY - 35;
   const contentHeight = contentBottom - contentTopY;
-  const verticalOffset = Math.round((canvasHeight - contentHeight) / 2) - contentTopY;
+
+  // Intrinsic diagram size (drawing-coordinate space), with symmetric vertical padding.
+  const VPAD = 50;
+  const intrinsicW = canvasWidth;
+  const intrinsicH = Math.round(contentHeight) + VPAD * 2;
+
+  // Fit the diagram into its container and render at device resolution. Drawing at the
+  // fitted scale (instead of CSS-shrinking an oversized bitmap) keeps lines and text
+  // crisp, while keeping the diagram fully contained in the viewport height.
+  const box    = canvas.parentElement;
+  const availW = Math.max(1, (box ? box.clientWidth  : intrinsicW) - 32); // 32 = .canvas-wrap padding
+  const availH = Math.max(1, (box ? box.clientHeight : intrinsicH) - 32);
+  const scale  = Math.min(1, availW / intrinsicW, availH / intrinsicH);   // only shrink, never upscale
+  const dpr    = window.devicePixelRatio || 1;
+
+  canvas.style.width  = `${intrinsicW * scale}px`;
+  canvas.style.height = `${intrinsicH * scale}px`;
+  canvas.width  = Math.round(intrinsicW * scale * dpr);
+  canvas.height = Math.round(intrinsicH * scale * dpr);
+
+  ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  ctx.clearRect(0, 0, intrinsicW, intrinsicH);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, intrinsicW, intrinsicH);
+  ctx.setLineDash([]);
 
   ctx.save();
-  ctx.translate(0, verticalOffset);
+  ctx.translate(0, VPAD - contentTopY);
 
   // ── Main column: grid → transformer → main feeder → main bus ─────────────────
   // Downstream (motor) contribution reflected toward the main bus. Board motors do
@@ -125,7 +145,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const mainTextStartX = computeSectionTextStartX(mainColX, mainLabelTexts);
   const sourceLabelX   = mainColX + 44;
 
-  drawVerticalLine(mainColX, conductorTopY, mainBusY);
+  drawVerticalLine(mainColX, hasGridData ? conductorTopY : trafoY - 35, mainBusY);
   if (hasGridData) drawGridSymbol(mainColX, gridY);
   if (psfBoxY !== null) drawImpedanceBox(mainColX, psfBoxY, transformer.inCableKVAcc.toFixed(2), mainTextStartX);
   drawTransformer(mainColX, trafoY);
