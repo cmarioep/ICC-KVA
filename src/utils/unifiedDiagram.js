@@ -14,9 +14,9 @@ export function drawUnifiedDiagram(canvas, data, results) {
   ctx.setLineDash([]);
 
   const {
-    drawVerticalLine, drawText, drawTextWithKVAccSubscript, drawRightArrow,
-    computeSectionTextStartX, drawImpedanceBox, drawTransformer, drawGridSymbol,
-    drawResistiveLoadSymbol, drawLoadSymbol, drawBusBar,
+    drawLine, drawVerticalLine, drawText, drawTextWithKVAccSubscript, drawRightArrow,
+    computeSectionTextStartX, drawFlowPairLabels, drawImpedanceBox, drawTransformer,
+    drawGridSymbol, drawResistiveLoadSymbol, drawLoadSymbol, drawBusBar,
   } = createPrimitives(ctx);
 
   const { grid } = data;
@@ -25,12 +25,6 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const generator    = srcResults.find(s => s.type === "generator");
   const hasGridData  = grid.kV != null && grid.kV > 0 && grid.Icc != null && grid.Icc > 0;
   const mainVoltageKV = results.busVoltageKV ?? 0.208;
-
-  // Upstream-only label: value text to the left of the conductor + a right arrow.
-  function drawUpstreamLabel(conductorX, y, kVA, textStartX) {
-    drawText(kVA.toFixed(2) + " kVA", textStartX, y + 3, 10, "#111");
-    drawRightArrow(conductorX - 8, y, 36);
-  }
 
   // ── Horizontal layout: each tablero owns a slot sized to its circuit count ────
   const LOAD_SPACING = 120;
@@ -84,10 +78,11 @@ export function drawUnifiedDiagram(canvas, data, results) {
   // main bus → (per-tablero feeder box) → tablero bus
   const feederFlow1Y = mainBusY + 4 + SEG + 4;
   let feederBoxY = null;
+  let feederFlow2Y = null;
   let tableroBusY;
   if (anyFeeder) {
     feederBoxY = feederFlow1Y + 12 + SEG + 11;
-    const feederFlow2Y = feederBoxY + 11 + SEG + 4;
+    feederFlow2Y = feederBoxY + 11 + SEG + 4;
     tableroBusY = feederFlow2Y + 12 + SEG + 4;
   } else {
     tableroBusY = feederFlow1Y + 12 + SEG + 4;
@@ -109,9 +104,24 @@ export function drawUnifiedDiagram(canvas, data, results) {
   ctx.translate(0, verticalOffset);
 
   // ── Main column: grid → transformer → main feeder → main bus ─────────────────
-  const mainLabelTexts = [gridKVAcc.toFixed(2) + " kVA", mainBusKVAcc.toFixed(2) + " kVA"];
-  if (hasPsf)        mainLabelTexts.push(transformer.kVAccAtSourceInput.toFixed(2) + " kVA");
-  if (hasMainFeeder) mainLabelTexts.push(transformer.kVAccPassingThrough.toFixed(2) + " kVA");
+  // Downstream (motor) contribution reflected toward the main bus. Board motors do
+  // not change the main-bus Icc (kept upstream-only in the calc), but for visual
+  // parity with the single diagram we show each board's aggregate motor kVAcc,
+  // reflected up through its own feeder, summed at the bus and propagated upward.
+  const downstreamAtBus = tableros.reduce((sum, t) => {
+    const contrib = t.feederKVAcc != null ? series(t.downstreamKVAcc, t.feederKVAcc) : t.downstreamKVAcc;
+    return sum + contrib;
+  }, 0) + (generator ? generator.kVAccAtSourceOutput : 0);
+  const downstreamBelowTrafo = hasMainFeeder ? series(downstreamAtBus, transformer.outCableKVAcc) : downstreamAtBus;
+  const downstreamBelowPsf   = series(downstreamBelowTrafo, transformer.equipmentKVAcc);
+  const downstreamAtGrid     = hasPsf ? series(downstreamBelowPsf, transformer.inCableKVAcc) : downstreamBelowPsf;
+
+  const mainLabelTexts = [
+    gridKVAcc.toFixed(2) + " kVA", downstreamAtGrid.toFixed(2) + " kVA",
+    transformer.kVAccAtSourceOutput.toFixed(2) + " kVA", downstreamAtBus.toFixed(2) + " kVA",
+    transformer.kVAccPassingThrough.toFixed(2) + " kVA", downstreamBelowTrafo.toFixed(2) + " kVA",
+  ];
+  if (hasPsf) mainLabelTexts.push(transformer.kVAccAtSourceInput.toFixed(2) + " kVA", downstreamBelowPsf.toFixed(2) + " kVA");
   const mainTextStartX = computeSectionTextStartX(mainColX, mainLabelTexts);
   const sourceLabelX   = mainColX + 44;
 
@@ -120,6 +130,19 @@ export function drawUnifiedDiagram(canvas, data, results) {
   if (psfBoxY !== null) drawImpedanceBox(mainColX, psfBoxY, transformer.inCableKVAcc.toFixed(2), mainTextStartX);
   drawTransformer(mainColX, trafoY);
   if (mainFeederBoxY !== null) drawImpedanceBox(mainColX, mainFeederBoxY, transformer.outCableKVAcc.toFixed(2), mainTextStartX);
+
+  // Flow-pair labels down the main column (upstream black, downstream grey + arrow)
+  if (hasGridData) {
+    const textBlockEndX = mainColX - 52; // conductorX - 8(tip gap) - 40(arrow) - 4(text gap)
+    drawLine(mainTextStartX, flowAtGridY, textBlockEndX, flowAtGridY, 1, "#888");
+    drawFlowPairLabels(mainColX, flowAtGridY, gridKVAcc, downstreamAtGrid, mainTextStartX);
+    if (hasPsf) drawFlowPairLabels(mainColX, trafoApproachY, transformer.kVAccAtSourceInput, downstreamBelowPsf, mainTextStartX);
+  }
+  drawFlowPairLabels(mainColX, flowAtTrafoY, transformer.kVAccPassingThrough, downstreamBelowTrafo, mainTextStartX);
+  if (hasMainFeeder) {
+    const flowAfterMainFeederY = mainFeederBoxY + 11 + SEG + 4;
+    drawFlowPairLabels(mainColX, flowAfterMainFeederY, transformer.kVAccAtSourceOutput, downstreamAtBus, mainTextStartX);
+  }
 
   // Right-side technical data
   if (hasGridData) {
@@ -157,10 +180,24 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
     // Drop from main bus → feeder box → tablero bus
     drawVerticalLine(colX, mainBusY, tableroBusY);
-    const feederTextStartX = computeSectionTextStartX(colX, [tablero.upstreamAtBus.toFixed(2) + " kVA"]);
-    if (feederBoxY !== null && tablero.feeder?.enabled && tablero.feederKVAcc != null) {
+    const hasFeeder = feederBoxY !== null && tablero.feeder?.enabled && tablero.feederKVAcc != null;
+
+    // This board's aggregate motor contribution, reflected up through its feeder
+    const tableroContribToMain = hasFeeder
+      ? series(tablero.downstreamKVAcc, tablero.feederKVAcc)
+      : tablero.downstreamKVAcc;
+
+    const feederLabelTexts = [
+      mainBusKVAcc.toFixed(2) + " kVA", tableroContribToMain.toFixed(2) + " kVA",
+      tablero.upstreamAtBus.toFixed(2) + " kVA", tablero.downstreamKVAcc.toFixed(2) + " kVA",
+    ];
+    if (hasFeeder) feederLabelTexts.push("(" + tablero.feederKVAcc.toFixed(2) + " kVA)");
+    const feederTextStartX = computeSectionTextStartX(colX, feederLabelTexts);
+
+    drawFlowPairLabels(colX, feederFlow1Y, mainBusKVAcc, tableroContribToMain, feederTextStartX);
+    if (hasFeeder) {
       drawImpedanceBox(colX, feederBoxY, tablero.feederKVAcc.toFixed(2), feederTextStartX);
-      drawUpstreamLabel(colX, feederBoxY - 20, tablero.upstreamAtBus, feederTextStartX);
+      drawFlowPairLabels(colX, feederFlow2Y, tablero.upstreamAtBus, tablero.downstreamKVAcc, feederTextStartX);
     }
 
     // Tablero bus bar (spans its own circuits)
@@ -177,19 +214,42 @@ export function drawUnifiedDiagram(canvas, data, results) {
     tablero.loadResults.forEach((load, li) => {
       const loadX = firstLoadX + li * LOAD_SPACING;
       const loadVoltageKV    = load.voltageKV ?? busVoltageKV;
-      const terminalUpstream = load.cableKVAcc ? series(tablero.upstreamAtBus, load.cableKVAcc) : tablero.upstreamAtBus;
+      const hasCable         = load.cable?.enabled && load.cableKVAcc != null;
+      const terminalUpstream = hasCable ? series(tablero.upstreamAtBus, load.cableKVAcc) : tablero.upstreamAtBus;
 
       drawVerticalLine(loadX, tableroBusY, circuitSymbolY);
-      if (load.cable?.enabled && load.cableKVAcc != null) {
-        const boxTextStartX = computeSectionTextStartX(loadX, [load.cableKVAcc.toFixed(2) + " kVA"]);
-        drawImpedanceBox(loadX, circuitBoxY, load.cableKVAcc.toFixed(2), boxTextStartX);
-      }
 
       if (load.loadType === "resistive") {
+        // Resistive: single upstream label per level (kVAcc decreasing through the cable)
+        const labelTexts = [tablero.upstreamAtBus.toFixed(2) + " kVA"];
+        if (hasCable) labelTexts.push(terminalUpstream.toFixed(2) + " kVA", "(" + load.cableKVAcc.toFixed(2) + " kVA)");
+        const textStartX = computeSectionTextStartX(loadX, labelTexts);
+
+        drawText(tablero.upstreamAtBus.toFixed(2) + " kVA", textStartX, circuitFlow1Y - 4, 10, "#111");
+        drawRightArrow(loadX - 8, circuitFlow1Y, 40);
+        if (hasCable) {
+          drawImpedanceBox(loadX, circuitBoxY, load.cableKVAcc.toFixed(2), textStartX);
+          drawText(terminalUpstream.toFixed(2) + " kVA", textStartX, circuitFlow2Y - 4, 10, "#555");
+          drawRightArrow(loadX - 8, circuitFlow2Y, 40);
+        }
+
         drawResistiveLoadSymbol(loadX, circuitSymbolY, load.label);
         const iccTerminal = terminalUpstream / (Math.sqrt(3) * loadVoltageKV);
         drawText(`Icc: ${iccTerminal.toFixed(1)} A`, loadX, circuitSymbolY + 52, 10, "#333", "center");
       } else {
+        // Motor: flow pair (upstream black, motor contribution grey) per level
+        const labelTexts = [
+          tablero.upstreamAtBus.toFixed(2) + " kVA", load.kVAccContributionToBus.toFixed(2) + " kVA",
+        ];
+        if (hasCable) labelTexts.push(terminalUpstream.toFixed(2) + " kVA", load.motorKVAcc.toFixed(2) + " kVA", "(" + load.cableKVAcc.toFixed(2) + " kVA)");
+        const textStartX = computeSectionTextStartX(loadX, labelTexts);
+
+        drawFlowPairLabels(loadX, circuitFlow1Y, tablero.upstreamAtBus, load.kVAccContributionToBus, textStartX);
+        if (hasCable) {
+          drawImpedanceBox(loadX, circuitBoxY, load.cableKVAcc.toFixed(2), textStartX);
+          drawFlowPairLabels(loadX, circuitFlow2Y, terminalUpstream, load.motorKVAcc, textStartX);
+        }
+
         drawLoadSymbol(loadX, circuitSymbolY, load.label);
         const iccTerminal = (terminalUpstream + load.motorKVAcc) / (Math.sqrt(3) * loadVoltageKV);
         drawText(`Icc: ${iccTerminal.toFixed(1)} A`, loadX, circuitSymbolY + 52, 10, "#333", "center");
