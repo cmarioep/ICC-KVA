@@ -155,10 +155,10 @@ export function createPrimitives(ctx) {
   }
 
   // Thick black bus bar
-  function drawBusBar(startX, endX, y) {
+  function drawBusBar(startX, endX, y, thickness = 8) {
     ctx.setLineDash([]);
     ctx.fillStyle = "#111";
-    ctx.fillRect(startX, y - 4, endX - startX, 8);
+    ctx.fillRect(startX, y - thickness / 2, endX - startX, thickness);
   }
 
   return {

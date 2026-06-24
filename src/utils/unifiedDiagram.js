@@ -23,8 +23,8 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const mainVoltageKV = results.busVoltageKV ?? 0.208;
 
   // ── Horizontal layout: each tablero owns a slot sized to its circuit count ────
-  const LOAD_SPACING = 120;
-  const TABLERO_GAP  = 60;
+  const LOAD_SPACING = 160;
+  const TABLERO_GAP  = 120;
   const tableroWidths = tableros.map(t => Math.max(180, t.loadResults.length * LOAD_SPACING));
   const totalWidth    = tableroWidths.reduce((a, b) => a + b, 0) + (tableros.length - 1) * TABLERO_GAP;
 
@@ -185,8 +185,9 @@ export function drawUnifiedDiagram(canvas, data, results) {
   }
 
   // ── Main bus bar ─────────────────────────────────────────────────────────────
-  const busLeftX  = Math.min(mainColX, tableroCenters[0]) - 40;
-  const busRightX = Math.max(generator ? genX : mainColX, tableroCenters[tableroCenters.length - 1]) + 40;
+  const BUS_OVERHANG = 120; // how far the bar extends past the outermost columns
+  const busLeftX  = Math.min(mainColX, tableroCenters[0]) - BUS_OVERHANG;
+  const busRightX = Math.max(generator ? genX : mainColX, tableroCenters[tableroCenters.length - 1]) + BUS_OVERHANG;
   drawBusBar(busLeftX, busRightX, mainBusY);
   drawText("BARRA PRINCIPAL", busLeftX, mainBusY - 12, 11, "#111", "left", true);
   drawText(`kVAcc: ${mainBusKVAcc.toFixed(1)}  |  Icc: ${mainBusIcc.toFixed(1)} A`, busRightX, mainBusY - 12, 10, "#c00", "right");

@@ -416,8 +416,8 @@ export function useIccCalc() {
       if (!unified) return;
       const { data, result } = unified;
 
-      const tableroWidths  = result.tableros.map(t => Math.max(180, t.loadResults.length * 130));
-      const totalWidth     = tableroWidths.reduce((a, b) => a + b, 0) + (result.tableros.length - 1) * 60;
+      const tableroWidths  = result.tableros.map(t => Math.max(180, t.loadResults.length * 170));
+      const totalWidth     = tableroWidths.reduce((a, b) => a + b, 0) + (result.tableros.length - 1) * 120;
       const intrinsicWidth = Math.max(720, totalWidth + 160);
 
       // drawUnifiedDiagram reads canvas.width as the intrinsic drawing width, then resizes
