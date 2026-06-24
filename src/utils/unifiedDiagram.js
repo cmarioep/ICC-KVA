@@ -14,7 +14,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
   ctx.setLineDash([]);
 
   const {
-    drawLine, drawVerticalLine, drawText, drawTextWithKVAccSubscript, drawRightArrow,
+    drawVerticalLine, drawText, drawTextWithKVAccSubscript, drawRightArrow,
     computeSectionTextStartX, drawFlowPairLabels, drawImpedanceBox, drawTransformer,
     drawGridSymbol, drawResistiveLoadSymbol, drawLoadSymbol, drawBusBar,
   } = createPrimitives(ctx);
@@ -133,8 +133,6 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
   // Flow-pair labels down the main column (upstream black, downstream grey + arrow)
   if (hasGridData) {
-    const textBlockEndX = mainColX - 52; // conductorX - 8(tip gap) - 40(arrow) - 4(text gap)
-    drawLine(mainTextStartX, flowAtGridY, textBlockEndX, flowAtGridY, 1, "#888");
     drawFlowPairLabels(mainColX, flowAtGridY, gridKVAcc, downstreamAtGrid, mainTextStartX);
     if (hasPsf) drawFlowPairLabels(mainColX, trafoApproachY, transformer.kVAccAtSourceInput, downstreamBelowPsf, mainTextStartX);
   }

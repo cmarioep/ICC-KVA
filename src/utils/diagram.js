@@ -17,7 +17,7 @@ export function drawDiagram(canvas, data, results) {
 
   // ── Primitives ──────────────────────────────────────────────────────────────
   const {
-    drawLine, drawVerticalLine, drawText, drawTextWithKVAccSubscript,
+    drawVerticalLine, drawText, drawTextWithKVAccSubscript,
     computeSectionTextStartX, drawFlowPairLabels, drawImpedanceBox,
     drawTransformer, drawGridSymbol, drawResistiveLoadSymbol, drawLoadSymbol,
     drawRightArrow, drawBusBar,
@@ -190,9 +190,6 @@ export function drawDiagram(canvas, data, results) {
     // 4. Flow pair labels (left of conductor for transformers, right for generators)
     const flowSide = isGenerator ? "right" : "left";
     if (!isGenerator && hasGridData) {
-      // Horizontal convergence line spanning only the text block width, at arrow mid-level
-      const textBlockEndX = sourceCenterX - 52; // conductorX - 8(tip gap) - 40(arrow) - 4(text gap)
-      drawLine(srcTextStartX, flowPairAtGridY, textBlockEndX, flowPairAtGridY, 1, "#888");
       drawFlowPairLabels(sourceCenterX, flowPairAtGridY, gridKVAcc, downstreamKVAatGrid, srcTextStartX);
       if (flowPairAtIncomingCableY !== null)
         drawFlowPairLabels(sourceCenterX, flowPairAtIncomingCableY, source.kVAccAtSourceInput, downstreamKVAbelowIncomingCable, srcTextStartX);

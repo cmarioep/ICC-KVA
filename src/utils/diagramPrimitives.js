@@ -74,19 +74,26 @@ export function createPrimitives(ctx) {
     return (conductorX - 8) - 40 - 4 - maxWidth;
   }
 
-  // Flow pair: upper kVA line (with arrow), lower kVA line.
+  // Flow pair: upper kVA line (with arrow), lower kVA line, plus a grey convergence
+  // line under the text block (at arrow level) separating the two values.
   // side="left": labels+arrow to the left of conductor (default, for transformers).
   // side="right": labels+arrow to the right of conductor (for generators).
   function drawFlowPairLabels(conductorX, y, upstreamKVA, downstreamKVA, textStartX, side = "left") {
     const arrowY = y; // midpoint between upper text (y-4) and lower text (y+12)
+    const upstreamText   = upstreamKVA.toFixed(2)   + " kVA";
+    const downstreamText = downstreamKVA.toFixed(2) + " kVA";
     if (side === "right") {
+      ctx.font = "10px Arial,sans-serif";
+      const textWidth = Math.max(ctx.measureText(upstreamText).width, ctx.measureText(downstreamText).width);
+      drawLine(conductorX + 52, arrowY, textStartX + textWidth, arrowY, 1, "#888");
       drawLeftArrow(conductorX + 8, arrowY, 40);
-      drawText(upstreamKVA.toFixed(2)   + " kVA", textStartX, y - 4,  10, "#111");
-      drawText(downstreamKVA.toFixed(2) + " kVA", textStartX, y + 12, 10, "#555");
+      drawText(upstreamText,   textStartX, y - 4,  10, "#111");
+      drawText(downstreamText, textStartX, y + 12, 10, "#555");
     } else {
-      drawText(upstreamKVA.toFixed(2)   + " kVA", textStartX, y - 4,  10, "#111");
+      drawLine(textStartX, arrowY, conductorX - 52, arrowY, 1, "#888");
+      drawText(upstreamText,   textStartX, y - 4,  10, "#111");
       drawRightArrow(conductorX - 8, arrowY, 40);
-      drawText(downstreamKVA.toFixed(2) + " kVA", textStartX, y + 12, 10, "#555");
+      drawText(downstreamText, textStartX, y + 12, 10, "#555");
     }
   }
 
