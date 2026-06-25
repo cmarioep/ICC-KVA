@@ -10,30 +10,32 @@ const DEFAULT_JSON = JSON.stringify({
   },
   primaryServiceFeeder: { type: "MT15", material: "Cobre", conduit: "PVC", awg: "1/0", long: 50 },
   mainSource: { kva: 630 },
+  existingFeeder: { type: "BT600", material: null, conduit: null, awg: null, long: null, wireQuantity: null, conductorsPerPhase: null, selected: false },
   generator: { kva: null },
-  generatorFeeder: { type: null, material: null, conduit: null, awg: null, long: null },
-  mainFeeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 2, long: 35, selected: true },
-  economicMainFeeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 500, long: 35, selected: false },
+  generatorFeeder: { type: "BT600", material: null, conduit: null, awg: null, long: null, wireQuantity: null, conductorsPerPhase: null },
+  totalDemandLoad: 10000,
+  mainFeeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: "500", long: 50, wireQuantity: 3, conductorsPerPhase: null, selected: true },
+  economicMainFeeder: { type: "BT600", material: null, conduit: null, awg: null, long: null, wireQuantity: null, conductorsPerPhase: null, selected: false },
   analisisCargas: {
     tableros: [
       {
         id: "tablero-1",
         config: {
-          name: "TD1", boardType: "trifasico", switchboardLength: 6,
+          name: "TD-1", boardType: "trifasico", switchboardLength: 6,
           systemVoltage: 208, environmentTemperature: 30,
           material: "Cobre", conduit: "PVC", wireQuantity: 3, temperatureAWG: 60,
         },
-        feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: 30, selected: true },
+        feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 6, long: 30, selected: true },
         economicFeeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 350, long: 30, selected: false },
         circuits: [
           {
-            active: true, name: "Bomba", loadType: "Inducción", type: "trifasico",
-            voltage: 208, load: "5000", material: "Cobre", conduit: "PVC", awg: 8, long: "15",
+            active: true, name: "Bomba", loadType: "Inducción", type: "monofasico",
+            voltage: 208, load: "2486.67", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
             circuitNumber: 1, circuitNumbers: [1],
           },
           {
-            active: true, name: "Iluminacion", loadType: "general", type: "monofasico",
-            voltage: 120, load: "1500", material: "Cobre", conduit: "PVC", awg: 12, long: "15",
+            active: true, name: "General", loadType: "Iluminacion", type: "monofasico",
+            voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
             circuitNumber: 3, circuitNumbers: [3],
           },
         ],
@@ -41,21 +43,21 @@ const DEFAULT_JSON = JSON.stringify({
       {
         id: "tablero-2",
         config: {
-          name: "TD2", boardType: "trifasico", switchboardLength: 12,
+          name: "TD-2", boardType: "trifasico", switchboardLength: 6,
           systemVoltage: 208, environmentTemperature: 30,
           material: "Cobre", conduit: "PVC", wireQuantity: 3, temperatureAWG: 60,
         },
-        feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: 30, selected: true },
-        economicFeeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 250, long: 20, selected: false },
+        feeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 6, long: 30, selected: true },
+        economicFeeder: { type: "BT600", material: "Cobre", conduit: "PVC", awg: 350, long: 30, selected: false },
         circuits: [
           {
-            active: true, name: "Piscina", loadType: "Inducción", type: "trifasico",
-            voltage: 208, load: "2500", material: "Cobre", conduit: "PVC", awg: 8, long: "15",
+            active: true, name: "Bomba", loadType: "Inducción", type: "monofasico",
+            voltage: 208, load: "2486.67", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
             circuitNumber: 1, circuitNumbers: [1],
           },
           {
-            active: true, name: "Iluminacion", loadType: "general", type: "monofasico",
-            voltage: 120, load: "1500", material: "Cobre", conduit: "PVC", awg: 12, long: "15",
+            active: true, name: "General", loadType: "Iluminacion", type: "monofasico",
+            voltage: 120, load: "1500", awgType: "BT600", material: "Cobre", conduit: "PVC", awg: 8, long: "25",
             circuitNumber: 3, circuitNumbers: [3],
           },
         ],
