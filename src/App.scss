@@ -160,16 +160,30 @@ $c-border-input: #cbd5e1;
 // ── KV two-column table ───────────────────────────────────────────────────────
 
 .kv-table {
-  overflow-x: auto;
+  overflow: hidden;
   background: $bg-white;
-  border-radius: 0 0 8px 8px;
+  border-radius: 8px;
   border: 1px solid $c-border;
-  border-top: none;
 
   table {
     width: 100%;
     border-collapse: collapse;
   }
+
+  tr:last-child .kv-td {
+    border-bottom: none;
+  }
+
+  // stacked standalone tables inside a card get separated
+  & + & {
+    margin-top: 10px;
+  }
+}
+
+// when a section title header sits directly above, merge them into one box
+.sec-title + .kv-table {
+  border-top: none;
+  border-radius: 0 0 8px 8px;
 }
 
 .kv-td {
