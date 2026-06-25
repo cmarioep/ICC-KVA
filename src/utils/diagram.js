@@ -208,7 +208,7 @@ export function drawDiagram(canvas, data, results) {
 
   // Icc at bus bar — same style/pattern as the unified diagram
   const shortCircuitCurrentAtBus = busKVAcc / (Math.sqrt(3) * busVoltageKV);
-  drawIccLabel(`Icc: ${shortCircuitCurrentAtBus.toFixed(2)} A`, busBarRightX, currentY - 12, 11, PALETTE.faultCurrent, "right");
+  drawIccLabel(`Iasc: ${(shortCircuitCurrentAtBus * asymmetricFactor).toFixed(2)} A`, busBarRightX, currentY - 12, 11, PALETTE.faultCurrent, "right");
 
   // ── Load branches — drawn once below the common bus bar ─────────────────────
 
@@ -254,7 +254,7 @@ export function drawDiagram(canvas, data, results) {
         drawRightArrow(loadCenterX - 8, flowPair2Y, 40);
       }
 
-      drawIccLabel(`Icc: ${iccAtTerminal.toFixed(2)} A`, loadCenterX, symbolCenterY + 52, 11, PALETTE.faultCurrent, "center");
+      drawIccLabel(`Iasc: ${(iccAtTerminal * asymmetricFactor).toFixed(2)} A`, loadCenterX, symbolCenterY + 52, 11, PALETTE.faultCurrent, "center");
       return;
     }
 
@@ -300,12 +300,11 @@ export function drawDiagram(canvas, data, results) {
       upstreamKVAatTerminal = series(upstreamKVAatBus, load.cableKVAcc);
       drawFlowPairLabels(loadCenterX, loadFlowPair2Y, upstreamKVAatTerminal, load.motorKVAcc, loadTextStartX);
       const shortCircuitCurrentAtLoad = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
-      drawIccLabel(`Icc: ${shortCircuitCurrentAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
+      drawIccLabel(`Iasc: ${(shortCircuitCurrentAtLoad * asymmetricFactor).toFixed(2)}`, loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
     } else {
       const iccAtLoad  = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
       const iascAtLoad = iccAtLoad * asymmetricFactor;
-      drawIccLabel(`Icc: ${iccAtLoad.toFixed(2)}`,  loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
-      drawText(`Iasc: ${iascAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 66, 11, PALETTE.faultCurrent, "center");
+      drawIccLabel(`Iasc: ${iascAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
     }
   });
 

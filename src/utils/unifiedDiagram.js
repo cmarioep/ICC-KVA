@@ -22,6 +22,8 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const generator    = srcResults.find(s => s.type === "generator");
   const hasGridData  = grid.kV != null && grid.kV > 0 && grid.Icc != null && grid.Icc > 0;
   const mainVoltageKV = results.busVoltageKV ?? 0.208;
+  // Asymmetric factor: 1.25 for systems ≤ 600 V, 1.6 above.
+  const asymFactor = (kv) => (kv < 0.6 ? 1.25 : 1.6);
 
   // ── Horizontal layout: each tablero owns a slot sized to its circuit count ────
   const LOAD_SPACING = 160;
@@ -191,7 +193,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const busRightX = Math.max(generator ? genX : mainColX, tableroCenters[tableroCenters.length - 1]) + BUS_OVERHANG;
   drawBusBar(busLeftX, busRightX, mainBusY);
   drawText("BARRA PRINCIPAL", busLeftX, mainBusY - 12, 11, PALETTE.textPrimary, "left", true);
-  drawIccLabel(`Icc: ${mainBusIcc.toFixed(2)} A`, busRightX, mainBusY - 12, 11, PALETTE.faultCurrent, "right");
+  drawIccLabel(`Iasc: ${(mainBusIcc * asymFactor(mainVoltageKV)).toFixed(2)} A`, busRightX, mainBusY - 12, 11, PALETTE.faultCurrent, "right");
 
   // ── Per-tablero branches ─────────────────────────────────────────────────────
   tableros.forEach((tablero, i) => {
@@ -230,7 +232,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
     const tBusRightX  = colX + halfWidth;
     drawBusBar(tBusLeftX, tBusRightX, tableroBusY);
     drawText(tablero.name, tBusLeftX, tableroBusY - 12, 11, PALETTE.textPrimary, "left", true);
-    drawIccLabel(`Icc: ${tablero.symmetricShortCircuitCurrent.toFixed(2)} A`, tBusRightX, tableroBusY - 12, 11, PALETTE.faultCurrent, "right");
+    drawIccLabel(`Iasc: ${(tablero.symmetricShortCircuitCurrent * asymFactor(busVoltageKV)).toFixed(2)} A`, tBusRightX, tableroBusY - 12, 11, PALETTE.faultCurrent, "right");
 
     // Circuits hanging off the tablero bus
     const firstLoadX = colX - ((loadCount - 1) * LOAD_SPACING) / 2;
@@ -258,7 +260,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
         drawResistiveLoadSymbol(loadX, circuitSymbolY, load.label);
         const iccTerminal = terminalUpstream / (Math.sqrt(3) * loadVoltageKV);
-        drawIccLabel(`Icc: ${iccTerminal.toFixed(2)} A`, loadX, circuitSymbolY + 52, 11, PALETTE.faultCurrent, "center");
+        drawIccLabel(`Iasc: ${(iccTerminal * asymFactor(loadVoltageKV)).toFixed(2)} A`, loadX, circuitSymbolY + 52, 11, PALETTE.faultCurrent, "center");
       } else {
         // Motor: flow pair (upstream black, motor contribution grey) per level
         const labelTexts = [
@@ -275,7 +277,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
         drawLoadSymbol(loadX, circuitSymbolY, load.label);
         const iccTerminal = (terminalUpstream + load.motorKVAcc) / (Math.sqrt(3) * loadVoltageKV);
-        drawIccLabel(`Icc: ${iccTerminal.toFixed(2)} A`, loadX, circuitSymbolY + 52, 11, PALETTE.faultCurrent, "center");
+        drawIccLabel(`Iasc: ${(iccTerminal * asymFactor(loadVoltageKV)).toFixed(2)} A`, loadX, circuitSymbolY + 52, 11, PALETTE.faultCurrent, "center");
       }
     });
   });
