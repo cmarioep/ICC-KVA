@@ -478,6 +478,70 @@ $c-border-input: #cbd5e1;
   }
 }
 
+// ── KPIs de la barra principal ────────────────────────────────────────────────
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: $bg-white;
+  border: 1px solid $c-border;
+  border-top: 3px solid $c-slate-light;
+  border-radius: 10px;
+  padding: 12px 10px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  min-width: 0;
+  height: 100px;
+
+  &__value {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    font-family: $font-mono;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: $c-dark;
+    white-space: nowrap;
+  }
+
+  &__label {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    margin-top: 6px;
+    height: 26px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    color: $c-slate-light;
+  }
+
+  &--amber {
+    border-top-color: $c-amber;
+    .kpi__value { color: $c-amber; }
+  }
+  &--blue {
+    border-top-color: $c-blue;
+    .kpi__value { color: $c-blue; }
+  }
+  &--red {
+    border-top-color: $c-red;
+    .kpi__value { color: $c-red; }
+  }
+}
+
 // ── Topbar (form) ─────────────────────────────────────────────────────────────
 
 .topbar {

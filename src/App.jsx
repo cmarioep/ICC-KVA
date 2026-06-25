@@ -32,6 +32,28 @@ function SummaryDrawer({ open, onToggle, children }) {
 
 
 
+/* ── KPIs DE LA BARRA PRINCIPAL ──────────────────────────── */
+// Tres indicadores destacados (kVAcc, Icc simétrica, Icc asimétrica)
+// referidos únicamente a la barra principal.
+function BusKpis({ busKVAcc, symmetricIcc, asymmetricFactor }) {
+  return (
+    <div className="kpis">
+      <div className="kpi kpi--amber">
+        <div className="kpi__value">{formatNumber(busKVAcc, 1)}</div>
+        <div className="kpi__label">kVAcc en barra</div>
+      </div>
+      <div className="kpi kpi--blue">
+        <div className="kpi__value">{formatNumber(symmetricIcc, 1)}</div>
+        <div className="kpi__label">Icc simétrica [A]</div>
+      </div>
+      <div className="kpi kpi--red">
+        <div className="kpi__value">{formatNumber(symmetricIcc * asymmetricFactor, 1)}</div>
+        <div className="kpi__label">Icc asimétrica ×{asymmetricFactor} [A]</div>
+      </div>
+    </div>
+  );
+}
+
 /* ── KV TABLE ────────────────────────────────────────────── */
 function SectionTitle({ children }) {
   return <div className="sec-title">{children}</div>;
@@ -366,6 +388,11 @@ export default function App() {
           </div>
 
           <SummaryDrawer open={resumenOpen} onToggle={toggleResumen}>
+            <BusKpis
+              busKVAcc={result.mainBusKVAcc}
+              symmetricIcc={result.mainBusIcc}
+              asymmetricFactor={result.mainAsymmetricFactor}
+            />
             <UnifiedMainSummary data={data} result={result} />
             {result.tableros.map(tablero => (
               <TableroSummary key={tablero.id} tablero={tablero} />
@@ -400,6 +427,11 @@ export default function App() {
 
         {/* Aside — drawer no modal */}
         <SummaryDrawer open={resumenOpen} onToggle={toggleResumen}>
+          <BusKpis
+            busKVAcc={busKVAcc}
+            symmetricIcc={symmetricShortCircuitCurrent}
+            asymmetricFactor={asymmetricFactor}
+          />
           <Card>
             <div className="card-section-label">Resumen de Cortocircuito</div>
             <KVTable rows={[
