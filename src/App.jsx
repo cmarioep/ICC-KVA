@@ -224,11 +224,14 @@ function UnifiedMainSummary({ data, result }) {
           { label: "Material", value: tr.outCable.material ?? "Cobre" },
           { label: "Longitud (m)", value: tr.outCable.len },
           ...(tr.outCable.parallel > 1 ? [{ label: "Cond./fase", value: tr.outCable.parallel }] : []),
-          { label: "kVAcc cable", value: tr.outCableKVAcc.toFixed(2), color: "blue" },
+          { label: "kVAcc alimentador", value: tr.outCableKVAcc.toFixed(2), color: "blue" },
         ] : []),
 
-        { type: "total", label: "kVAcc Barra Principal", value: `${formatNumber(mainBusKVAcc, 1)} kVA`, color: "amber" },
-        { type: "total", label: "Icc simétrica Barra Principal", value: `${formatNumber(mainBusIcc, 1)} A`, color: "blue" },
+        { type: "header", label: "Barra Principal" },
+        { label: "kVAcc aguas arriba", value: `${formatNumber(mainBusKVAcc, 1)} kVA`, color: "blue" },
+        { label: "kVAcc motores", value: `${formatNumber(0, 1)} kVA`, color: "green" },
+        { type: "total", label: "kVAcc en barra", value: `${formatNumber(mainBusKVAcc, 1)} kVA`, color: "amber" },
+        { type: "total", label: "Icc simétrica", value: `${formatNumber(mainBusIcc, 1)} A`, color: "blue" },
         { type: "total", label: `Icc asimétrica ×${mainAsymmetricFactor}`, value: `${formatNumber(mainBusIcc * mainAsymmetricFactor, 1)} A`, color: "red" },
       ]} />
     </Card>
@@ -262,7 +265,7 @@ function TableroSummary({ tablero }) {
         { label: "kVAcc motores", value: `${formatNumber(downstreamKVAcc, 1)} kVA`, color: "green" },
         { type: "total", label: "kVAcc en barra", value: `${formatNumber(busKVAcc, 1)} kVA`, color: "amber" },
         { type: "total", label: "Icc simétrica", value: `${formatNumber(symmetricShortCircuitCurrent, 1)} A`, color: "blue" },
-        { type: "total", label: "Icc asimétrica", value: `${formatNumber(asymmetricShortCircuitCurrent, 1)} A`, color: "red" },
+        { type: "total", label: `Icc asimétrica ×${asymmetricFactor}`, value: `${formatNumber(asymmetricShortCircuitCurrent, 1)} A`, color: "red" },
 
         ...loadResults.flatMap(load => {
           const vKV = load.voltageKV ?? busVoltageKV;
@@ -272,7 +275,8 @@ function TableroSummary({ tablero }) {
             { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
             { label: "Tipo", value: load.circuitLoadType, color: "amber" },
             { label: "Calibre", value: load.cable.gauge },
-            { label: "kVAcc alimentador", value: load.cableKVAcc ? `${formatNumber(load.cableKVAcc, 1)} kVA` : "—", color: "blue" },
+            { label: "Longitud (m)", value: load.cable.len },
+            { label: "kVAcc Ramal", value: load.cableKVAcc ? `${formatNumber(load.cableKVAcc, 1)} kVA` : "—", color: "blue" },
             ...(load.loadType === "inducción" ? [
               { label: "Potencia (HP)", value: load.hp.toFixed(2), color: "green" },
               { label: "kVAcc motor", value: load.motorKVAcc.toFixed(2), color: "green" },
@@ -350,13 +354,14 @@ export default function App() {
   /* ═══ RESULTS — INDIVIDUAL (un tablero) ═══ */
   const activeTablero = tableroResults[activeTab] ?? tableroResults[0];
   if (!activeTablero) return null;
-  const { result } = activeTablero;
+  const { data, result } = activeTablero;
 
   const {
     srcResults, loadResults, busKVAcc, upstreamKVAcc, downstreamKVAcc,
     symmetricShortCircuitCurrent, asymmetricShortCircuitCurrent,
     asymmetricFactor, busVoltageKV, gridKVAcc,
   } = result;
+  const firstSource = srcResults[0];
 
   return (
     <div className="app app--results">
@@ -371,100 +376,71 @@ export default function App() {
         {/* Aside — 30% */}
         <aside className="res-aside">
           <Card>
-            <div className="card-section-label">Flujo de Cortocircuito → Barra</div>
+            <div className="card-section-label">Resumen de Cortocircuito</div>
             <KVTable rows={[
-              { type: "header", label: "Aguas Arriba → Barra" },
-              { label: "Red / Distribución — kVAcc", value: `${formatNumber(gridKVAcc, 1)} kVA`, bold: true, color: "amber" },
-              ...srcResults.flatMap(source => {
-                const cable = source.inCable?.enabled ? source.inCable
-                  : source.outCable?.enabled ? source.outCable : null;
-                const rows = [{ type: "header", label: source.label }];
-                if (cable) rows.push(
-                  { label: "Calibre", value: cable.gauge },
-                  { label: "Material", value: cable.material ?? "Cobre" },
-                  { label: "Longitud (m)", value: cable.len },
-                  ...(cable.parallel > 1 ? [{ label: "Cond./fase", value: cable.parallel }] : []),
-                  { label: "Z (Ω)", value: (getZ(cable.type, cable.gauge, cable.material, cable.canal) * cable.len / 1000 / (cable.parallel ?? 1)).toFixed(4) },
-                );
-                rows.push(
-                  { label: "kVAcc fuente", value: `${formatNumber(source.equipmentKVAcc, 1)} kVA`, color: "blue" },
-                  { label: "kVAcc pasante", value: `${formatNumber(source.kVAccPassingThrough, 1)} kVA`, color: "blue" },
-                  { label: "kVAcc a barra", value: `${formatNumber(source.kVAccAtSourceOutput, 1)} kVA`, bold: true, color: "blue" },
-                );
-                return rows;
-              }),
-              { type: "total", label: "Total aguas arriba", value: `${formatNumber(upstreamKVAcc, 1)} kVA`, color: "amber" },
+              { type: "header", label: "Operador de Red" },
+              { label: "Nivel de Tensión [kV]", value: data.grid.kV, bold: true, color: "amber" },
+              { label: "Corriente Cortocircuito 3Ø [kA]", value: data.grid.Icc },
+              { label: "kVAcc red", value: `${gridKVAcc.toFixed(2)} kVA`, bold: true, color: "blue" },
 
-              ...(loadResults.some(l => l.loadType === "inducción") ? [
-                { type: "header", label: "Contribución Motores → Barra" },
-                ...loadResults.filter(l => l.loadType === "inducción").flatMap(load => {
-                  const vKV = load.voltageKV ?? busVoltageKV;
-                  const icc = load.kVAccContributionToBus / (Math.sqrt(3) * vKV);
-                  return [
-                    { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
-                    { label: "Tipo", value: load.circuitLoadType, color: "amber" },
-                    { label: "Tensión (V)", value: load.voltageKV * 1000 },
+              ...(firstSource?.inCable?.enabled && firstSource.inCableKVAcc != null ? [
+                { type: "header", label: "Acometida de Media Tensión" },
+                { label: "Calibre", value: firstSource.inCable.gauge },
+                { label: "Material", value: firstSource.inCable.material ?? "Cobre" },
+                { label: "Longitud (m)", value: firstSource.inCable.len },
+                ...(firstSource.inCable.parallel > 1 ? [{ label: "Cond./fase", value: firstSource.inCable.parallel }] : []),
+                { label: "kVAcc cable", value: firstSource.inCableKVAcc.toFixed(2), color: "blue" },
+                { label: "kVAcc entrada eq.", value: `${firstSource.kVAccAtSourceInput.toFixed(2)} kVA`, bold: true, color: "blue" },
+              ] : []),
+
+              ...srcResults.flatMap(source => [
+                { type: "header", label: source.type === "transformer" ? "Transformador" : source.label },
+                { label: "kVA nominal", value: source.kVA },
+                { label: "Un (kV)", value: source.kVsec },
+                {
+                  label: source.type === "transformer" ? "Impedancia Z%" : "X''d",
+                  value: source.type === "transformer" ? `${source.zPct}%` : source.xdpp,
+                },
+                { label: "kVAcc equipo", value: source.equipmentKVAcc.toFixed(2), color: "blue" },
+                { label: "kVAcc pasante", value: `${source.kVAccPassingThrough.toFixed(2)} kVA`, bold: true, color: "blue" },
+              ]),
+
+              ...(firstSource?.outCable?.enabled && firstSource.outCableKVAcc != null ? [
+                { type: "header", label: "Alimentador Principal" },
+                { label: "Calibre", value: firstSource.outCable.gauge },
+                { label: "Material", value: firstSource.outCable.material ?? "Cobre" },
+                { label: "Longitud (m)", value: firstSource.outCable.len },
+                ...(firstSource.outCable.parallel > 1 ? [{ label: "Cond./fase", value: firstSource.outCable.parallel }] : []),
+                { label: "kVAcc alimentador", value: firstSource.outCableKVAcc.toFixed(2), color: "blue" },
+              ] : []),
+
+              { type: "header", label: "Barra" },
+              { label: "kVAcc aguas arriba", value: `${formatNumber(upstreamKVAcc, 1)} kVA`, color: "blue" },
+              { label: "kVAcc motores", value: `${formatNumber(downstreamKVAcc, 1)} kVA`, color: "green" },
+              { type: "total", label: "kVAcc en barra", value: `${formatNumber(busKVAcc, 1)} kVA`, color: "amber" },
+              { type: "total", label: "Icc simétrica", value: `${formatNumber(symmetricShortCircuitCurrent, 1)} A`, color: "blue" },
+              { type: "total", label: `Icc asimétrica ×${asymmetricFactor}`, value: `${formatNumber(asymmetricShortCircuitCurrent, 1)} A`, color: "red" },
+
+              ...loadResults.flatMap(load => {
+                const vKV = load.voltageKV ?? busVoltageKV;
+                const terminalUpstream = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
+                const terminalIcc = (terminalUpstream + (load.motorKVAcc ?? 0)) / (Math.sqrt(3) * vKV);
+                return [
+                  { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
+                  { label: "Tipo", value: load.circuitLoadType, color: "amber" },
+                  { label: "Calibre", value: load.cable.gauge },
+                  { label: "Longitud (m)", value: load.cable.len },
+                  { label: "kVAcc Ramal", value: load.cableKVAcc ? `${formatNumber(load.cableKVAcc, 1)} kVA` : "—", color: "blue" },
+                  ...(load.loadType === "inducción" ? [
                     { label: "Potencia (HP)", value: load.hp.toFixed(2), color: "green" },
-                    { label: "X''d", value: load.xdpp, color: "amber" },
-                    { label: "kVAcc motor", value: `${formatNumber(load.motorKVAcc, 1)} kVA`, color: "blue" },
-                    { label: "kVAcc cable", value: load.cableKVAcc ? `${formatNumber(load.cableKVAcc, 1)} kVA` : "—", color: "blue" },
-                    { label: "kVAcc a barra", value: `${formatNumber(load.kVAccContributionToBus, 2)} kVA`, bold: true, color: "green" },
-                    { label: "Icc (A)", value: `${formatNumber(icc, 1)} A`, bold: true, color: "green" },
-                  ];
-                }),
-                { type: "total", label: "Total aguas abajo", value: `${formatNumber(downstreamKVAcc, 1)} kVA`, color: "green" },
-              ] : []),
-
-              ...(loadResults.some(l => l.loadType === "resistive") ? [
-                { type: "header", label: "Cargas Resistivas — Terminal" },
-                ...loadResults.filter(l => l.loadType === "resistive").flatMap(load => {
-                  const vKV = load.voltageKV ?? busVoltageKV;
-                  const terminalKVAcc = load.cableKVAcc ? series(upstreamKVAcc, load.cableKVAcc) : upstreamKVAcc;
-                  const terminalIcc = terminalKVAcc / (Math.sqrt(3) * vKV);
-                  return [
-                    { type: "header", label: `Circ. ${load.circuitNumbers?.join("-") ?? load.circuitNumber} — ${load.label}` },
-                    { label: "Tipo", value: load.circuitLoadType, color: "amber" },
-                    { label: "Tensión (V)", value: load.voltageKV * 1000 },
-                    { label: "kVAcc conductor", value: load.cableKVAcc ? `${formatNumber(load.cableKVAcc, 1)} kVA` : "—", color: "amber" },
-                    { label: "kVAcc terminal", value: `${formatNumber(terminalKVAcc, 1)} kVA`, bold: true, color: "amber" },
-                    { label: "Icc terminal (A)", value: `${formatNumber(terminalIcc, 1)} A`, bold: true, color: "amber" },
-                  ];
-                }),
-              ] : []),
+                    { label: "kVAcc motor", value: load.motorKVAcc.toFixed(2), color: "green" },
+                  ] : []),
+                  { label: "Icc terminal (A)", value: `${formatNumber(terminalIcc, 1)} A`, bold: true, color: "amber" },
+                  { label: `Icc asimétrica ×${asymmetricFactor} (A)`, value: `${formatNumber(terminalIcc * asymmetricFactor, 1)} A`, bold: true, color: "red" },
+                ];
+              }),
             ]} />
           </Card>
-
-          <div className="summary-grid">
-            <div>
-              <div className="summary-section__title">Composición kVAcc en barra</div>
-              {[
-                { label: "Contrib. upstream (fuentes)", value: upstreamKVAcc, color: "blue", unit: "kVA" },
-                { label: "Contrib. downstream (motores)", value: downstreamKVAcc, color: "green", unit: "kVA" },
-                { label: "kVAcc TOTAL BARRA", value: busKVAcc, color: "amber", unit: "kVA" },
-              ].map(({ label, value, color, unit }) => (
-                <div key={label} className="summary-row">
-                  <span className="summary-row__label">{label}</span>
-                  <span className={`summary-row__value summary-row__value--${color}`}>{formatNumber(value, 1)} {unit}</span>
-                </div>
-              ))}
-            </div>
-            <div>
-              <div className="summary-section__title">Corrientes — Barra {busVoltageKV * 1000} V</div>
-              {[
-                { label: "Icc simétrica", value: symmetricShortCircuitCurrent, color: "blue", unit: "A" },
-                { label: `Icc asimétrica ×${asymmetricFactor}`, value: asymmetricShortCircuitCurrent, color: "red", unit: "A" },
-              ].map(({ label, value, color, unit }) => (
-                <div key={label} className="summary-row">
-                  <span className="summary-row__label">{label}</span>
-                  <span className={`summary-row__value summary-row__value--${color}`}>{formatNumber(value, 1)} {unit}</span>
-                </div>
-              ))}
-              <div className="formula-box">
-                Fórmula: Icc = kVAcc / (√3 × {busVoltageKV * 1000} V)<br />
-                Factor asimétrico: {asymmetricFactor} {busVoltageKV < 0.6 ? "(sistema ≤600V)" : "(sistema >600V)"}
-              </div>
-            </div>
-          </div>
         </aside>
       </div>
     </div>
