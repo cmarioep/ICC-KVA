@@ -1,3 +1,4 @@
+import { useState } from "react";
 import "./App.scss";
 import { getZ, series } from "./utils/cableUtils";
 import { formatNumber } from "./utils/format";
@@ -6,6 +7,27 @@ import { useIccCalc } from "./hooks/useIccCalc";
 /* ── UI PRIMITIVOS ──────────────────────────────────────── */
 function Card({ children }) {
   return <div className="card">{children}</div>;
+}
+
+/* ── DRAWER NO MODAL DEL RESUMEN ─────────────────────────── */
+// Panel lateral deslizante con un "handle" persistente para mostrar/ocultar.
+// No es modal: no hay backdrop ni bloqueo del canvas mientras está abierto.
+function SummaryDrawer({ open, onToggle, children }) {
+  return (
+    <aside className={`res-aside${open ? " res-aside--open" : ""}`}>
+      <button
+        type="button"
+        className="res-aside__handle"
+        onClick={onToggle}
+        aria-expanded={open}
+        title={open ? "Ocultar resumen" : "Mostrar resumen"}
+      >
+        <span className="res-aside__handle-arrow">{open ? "›" : "‹"}</span>
+        <span className="res-aside__handle-label">Resumen</span>
+      </button>
+      <div className="res-aside__content">{children}</div>
+    </aside>
+  );
 }
 
 
@@ -301,6 +323,9 @@ export default function App() {
     parseAndCalculate,
   } = useIccCalc();
 
+  const [resumenOpen, setResumenOpen] = useState(true);
+  const toggleResumen = () => setResumenOpen(o => !o);
+
   /* ═══ JSON INPUT ═══ */
   if (view === "json") return (
     <div className="app">
@@ -340,12 +365,12 @@ export default function App() {
             </div>
           </div>
 
-          <aside className="res-aside">
+          <SummaryDrawer open={resumenOpen} onToggle={toggleResumen}>
             <UnifiedMainSummary data={data} result={result} />
             {result.tableros.map(tablero => (
               <TableroSummary key={tablero.id} tablero={tablero} />
             ))}
-          </aside>
+          </SummaryDrawer>
         </div>
       </div>
     );
@@ -373,8 +398,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Aside — 30% */}
-        <aside className="res-aside">
+        {/* Aside — drawer no modal */}
+        <SummaryDrawer open={resumenOpen} onToggle={toggleResumen}>
           <Card>
             <div className="card-section-label">Resumen de Cortocircuito</div>
             <KVTable rows={[
@@ -441,7 +466,7 @@ export default function App() {
               }),
             ]} />
           </Card>
-        </aside>
+        </SummaryDrawer>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { series } from "./cableUtils";
 import { createPrimitives } from "./diagramPrimitives";
+import { PALETTE } from "./palette";
 
 export function drawDiagram(canvas, data, results) {
   if (!canvas) return;
@@ -165,26 +166,26 @@ export function drawDiagram(canvas, data, results) {
       ctx.setLineDash([]);
       ctx.beginPath(); ctx.arc(sourceCenterX, transformerY, 24, 0, Math.PI * 2);
       ctx.fillStyle = "#fff"; ctx.fill();
-      ctx.strokeStyle = "#1a6e1a"; ctx.lineWidth = 2; ctx.stroke();
-      drawText("G", sourceCenterX, transformerY + 6, 16, "#1a6e1a", "center", true);
+      ctx.strokeStyle = PALETTE.motor; ctx.lineWidth = 2; ctx.stroke();
+      drawText("G", sourceCenterX, transformerY + 6, 16, PALETTE.motor, "center", true);
     }
     if (outgoingCableBoxY !== null) drawImpedanceBox(sourceCenterX, outgoingCableBoxY, source.outCableKVAcc.toFixed(2), srcTextStartX);
 
     // 3. Right-side technical data
     if (!isGenerator) {
       if (hasGridData) {
-        drawText(`Un: ${data.grid.kV ?? '--'} kV`,                          sourceLabelX, diagramTopY + 4,  11, "#222");
-        drawText(`Icc: ${data.grid.Icc != null ? data.grid.Icc.toFixed(1) : '--'} kA`, sourceLabelX, diagramTopY + 18, 11, "#222");
-        drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, diagramTopY + 32, 11, "#c00", true);
+        drawText(`Un: ${data.grid.kV ?? '--'} kV`,                          sourceLabelX, diagramTopY + 4,  11, PALETTE.textPrimary);
+        drawText(`Icc: ${data.grid.Icc != null ? data.grid.Icc.toFixed(1) : '--'} kA`, sourceLabelX, diagramTopY + 18, 11, PALETTE.textPrimary);
+        drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, diagramTopY + 32, 11, PALETTE.faultCurrent, true);
       }
-      drawText(`kVA:  ${source.kVA}`,     sourceLabelX, transformerY - 28, 11, "#222");
-      drawText(`Un:  ${source.kVsec} kV`, sourceLabelX, transformerY - 14, 11, "#222");
-      drawText(`Z%:  ${source.zPct}%`,    sourceLabelX, transformerY,      11, "#222");
-      drawTextWithKVAccSubscript(`:  (${source.equipmentKVAcc.toFixed(2)} kVA)`, sourceLabelX, transformerY + 14, 11, "#c00");
+      drawText(`kVA:  ${source.kVA}`,     sourceLabelX, transformerY - 28, 11, PALETTE.textPrimary);
+      drawText(`Un:  ${source.kVsec} kV`, sourceLabelX, transformerY - 14, 11, PALETTE.textPrimary);
+      drawText(`Z%:  ${source.zPct}%`,    sourceLabelX, transformerY,      11, PALETTE.textPrimary);
+      drawTextWithKVAccSubscript(`:  (${source.equipmentKVAcc.toFixed(2)} kVA)`, sourceLabelX, transformerY + 14, 11, PALETTE.faultCurrent);
     } else {
-      drawText(`kVA: ${source.kVA}`,  srcTextStartX, transformerY - 16, 11, "#222");
-      drawText(`X'': ${source.xdpp}`, srcTextStartX, transformerY - 2,  11, "#222");
-      drawTextWithKVAccSubscript(`: (${source.equipmentKVAcc.toFixed(2)} kVA)`, srcTextStartX, transformerY + 12, 11, "#c00");
+      drawText(`kVA: ${source.kVA}`,  srcTextStartX, transformerY - 16, 11, PALETTE.textPrimary);
+      drawText(`X'': ${source.xdpp}`, srcTextStartX, transformerY - 2,  11, PALETTE.textPrimary);
+      drawTextWithKVAccSubscript(`: (${source.equipmentKVAcc.toFixed(2)} kVA)`, srcTextStartX, transformerY + 12, 11, PALETTE.faultCurrent);
     }
 
     // 4. Flow pair labels (left of conductor for transformers, right for generators)
@@ -205,9 +206,9 @@ export function drawDiagram(canvas, data, results) {
   const busBarRightX = diagramCenterX + (srcResults.length - 1) * 230 + busBarHalfWidth;
   drawBusBar(busBarLeftX, busBarRightX, currentY);
 
-  // Icc at bus bar — drawn once, to the right of the first source
+  // Icc at bus bar — same style/pattern as the unified diagram
   const shortCircuitCurrentAtBus = busKVAcc / (Math.sqrt(3) * busVoltageKV);
-  drawText(`Icc:  ${shortCircuitCurrentAtBus.toFixed(3)}`, diagramCenterX + 50, currentY - 16, 11, "#333");
+  drawText(`Icc: ${shortCircuitCurrentAtBus.toFixed(1)} A`, busBarRightX, currentY - 12, 10, PALETTE.faultCurrent, "right");
 
   // ── Load branches — drawn once below the common bus bar ─────────────────────
 
@@ -246,14 +247,14 @@ export function drawDiagram(canvas, data, results) {
       if (cableBoxY !== null) drawImpedanceBox(loadCenterX, cableBoxY, load.cableKVAcc.toFixed(2), textStartX);
       drawResistiveLoadSymbol(loadCenterX, symbolCenterY, load.label);
 
-      drawText(upstreamKVAatBus.toFixed(2) + " kVA", textStartX, flowPair1Y - 4, 10, "#111");
+      drawText(upstreamKVAatBus.toFixed(2) + " kVA", textStartX, flowPair1Y - 4, 10, PALETTE.textPrimary);
       drawRightArrow(loadCenterX - 8, flowPair1Y, 40);
       if (flowPair2Y !== null) {
-        drawText(terminalKVAcc.toFixed(2) + " kVA", textStartX, flowPair2Y - 4, 10, "#555");
+        drawText(terminalKVAcc.toFixed(2) + " kVA", textStartX, flowPair2Y - 4, 10, PALETTE.textSecondary);
         drawRightArrow(loadCenterX - 8, flowPair2Y, 40);
       }
 
-      drawText(`Icc: ${iccAtTerminal.toFixed(2)} A`, loadCenterX, symbolCenterY + 52, 10, "#333", "center");
+      drawText(`Icc: ${iccAtTerminal.toFixed(2)} A`, loadCenterX, symbolCenterY + 52, 10, PALETTE.faultCurrent, "center");
       return;
     }
 
@@ -299,12 +300,12 @@ export function drawDiagram(canvas, data, results) {
       upstreamKVAatTerminal = series(upstreamKVAatBus, load.cableKVAcc);
       drawFlowPairLabels(loadCenterX, loadFlowPair2Y, upstreamKVAatTerminal, load.motorKVAcc, loadTextStartX);
       const shortCircuitCurrentAtLoad = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
-      drawText(`Icc: ${shortCircuitCurrentAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 52, 11, "#333", "center");
+      drawText(`Icc: ${shortCircuitCurrentAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
     } else {
       const iccAtLoad  = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
       const iascAtLoad = iccAtLoad * asymmetricFactor;
-      drawText(`Icc: ${iccAtLoad.toFixed(2)}`,  loadCenterX, loadCircleCenterY + 52, 11, "#333", "center");
-      drawText(`Iasc: ${iascAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 66, 11, "#333", "center");
+      drawText(`Icc: ${iccAtLoad.toFixed(2)}`,  loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
+      drawText(`Iasc: ${iascAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 66, 11, PALETTE.faultCurrent, "center");
     }
   });
 

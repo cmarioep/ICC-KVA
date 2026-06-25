@@ -3,7 +3,9 @@
 // Used by both the single-bus diagram (diagram.js) and the unified multi-board
 // diagram (unifiedDiagram.js) so the visual language stays identical.
 
-const MAIN_LINE_COLOR    = "#1a3a6e";
+import { PALETTE } from "./palette";
+
+const MAIN_LINE_COLOR    = PALETTE.feeder;
 const DEFAULT_LINE_WIDTH = 2;
 
 export function createPrimitives(ctx) {
@@ -16,14 +18,14 @@ export function createPrimitives(ctx) {
   }
   const drawVerticalLine = (x, y1, y2, lw = DEFAULT_LINE_WIDTH, color = MAIN_LINE_COLOR) => drawLine(x, y1, x, y2, lw, color);
 
-  function drawText(text, x, y, fontSize = 11, color = "#222", textAlign = "left", isBold = false) {
+  function drawText(text, x, y, fontSize = 11, color = PALETTE.textPrimary, textAlign = "left", isBold = false) {
     ctx.setLineDash([]);
     ctx.font = `${isBold ? "bold " : ""}${fontSize}px Arial,sans-serif`;
     ctx.fillStyle = color; ctx.textAlign = textAlign;
     ctx.fillText(text, x, y);
   }
 
-  function drawTextWithKVAccSubscript(remainingText, x, y, fontSize = 11, color = "#222", isBold = false) {
+  function drawTextWithKVAccSubscript(remainingText, x, y, fontSize = 11, color = PALETTE.textPrimary, isBold = false) {
     const boldPrefix = isBold ? "bold " : "";
     ctx.setLineDash([]);
     ctx.fillStyle = color; ctx.textAlign = "left";
@@ -41,10 +43,10 @@ export function createPrimitives(ctx) {
   function drawRightArrow(tipX, y, arrowLength = 40) {
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.strokeStyle = "#cc2200"; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = PALETTE.faultCurrent; ctx.lineWidth = 1.5;
     ctx.moveTo(tipX - arrowLength, y); ctx.lineTo(tipX - 3, y);
     ctx.stroke();
-    ctx.beginPath(); ctx.fillStyle = "#cc2200";
+    ctx.beginPath(); ctx.fillStyle = PALETTE.faultCurrent;
     ctx.moveTo(tipX, y);
     ctx.lineTo(tipX - 8, y - 4);
     ctx.lineTo(tipX - 8, y + 4);
@@ -55,10 +57,10 @@ export function createPrimitives(ctx) {
   function drawLeftArrow(tipX, y, arrowLength = 40) {
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.strokeStyle = "#cc2200"; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = PALETTE.faultCurrent; ctx.lineWidth = 1.5;
     ctx.moveTo(tipX + 3, y); ctx.lineTo(tipX + arrowLength, y);
     ctx.stroke();
-    ctx.beginPath(); ctx.fillStyle = "#cc2200";
+    ctx.beginPath(); ctx.fillStyle = PALETTE.faultCurrent;
     ctx.moveTo(tipX, y);
     ctx.lineTo(tipX + 8, y - 4);
     ctx.lineTo(tipX + 8, y + 4);
@@ -87,22 +89,22 @@ export function createPrimitives(ctx) {
       const textWidth = Math.max(ctx.measureText(upstreamText).width, ctx.measureText(downstreamText).width);
       drawLine(conductorX + 52, arrowY, textStartX + textWidth, arrowY, 1, "#888");
       drawLeftArrow(conductorX + 8, arrowY, 40);
-      drawText(upstreamText,   textStartX, y - 4,  10, "#111");
-      drawText(downstreamText, textStartX, y + 12, 10, "#555");
+      drawText(upstreamText,   textStartX, y - 4,  10, PALETTE.textPrimary);
+      drawText(downstreamText, textStartX, y + 12, 10, PALETTE.textSecondary);
     } else {
       drawLine(textStartX, arrowY, conductorX - 52, arrowY, 1, "#888");
-      drawText(upstreamText,   textStartX, y - 4,  10, "#111");
+      drawText(upstreamText,   textStartX, y - 4,  10, PALETTE.textPrimary);
       drawRightArrow(conductorX - 8, arrowY, 40);
-      drawText(downstreamText, textStartX, y + 12, 10, "#555");
+      drawText(downstreamText, textStartX, y + 12, 10, PALETTE.textSecondary);
     }
   }
 
   // Grey impedance box. textStartX shared with flow pair labels for a uniform left edge.
   function drawImpedanceBox(x, y, label, textStartX) {
     ctx.setLineDash([]);
-    ctx.fillStyle = "#c0c0c0";
+    ctx.fillStyle = "#D2E5FC";
     ctx.fillRect(x - 9, y - 11, 18, 22);
-    ctx.strokeStyle = "#444"; ctx.lineWidth = 1;
+    ctx.strokeStyle = MAIN_LINE_COLOR; ctx.lineWidth = 1;
     ctx.strokeRect(x - 9, y - 11, 18, 22);
     drawVerticalLine(x, y - 11, y + 11);
     ctx.font = "9px Arial,sans-serif";
@@ -118,10 +120,10 @@ export function createPrimitives(ctx) {
     ctx.fillRect(centerX - r - 4, centerY - r * 1.6, (r + 4) * 2, r * 3.2);
     ctx.beginPath(); ctx.arc(centerX, centerY - r * 0.6, r, 0, Math.PI * 2);
     ctx.fillStyle = "#fff"; ctx.fill();
-    ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = PALETTE.transformer; ctx.lineWidth = 2; ctx.stroke();
     ctx.beginPath(); ctx.arc(centerX, centerY + r * 0.6, r, 0, Math.PI * 2);
     ctx.fillStyle = "#fff"; ctx.fill();
-    ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = PALETTE.transformer; ctx.lineWidth = 2; ctx.stroke();
   }
 
   // Downward-pointing grey triangle
@@ -130,8 +132,8 @@ export function createPrimitives(ctx) {
     ctx.beginPath();
     ctx.moveTo(centerX, centerY + 40); ctx.lineTo(centerX - 24, centerY); ctx.lineTo(centerX + 24, centerY);
     ctx.closePath();
-    ctx.fillStyle = "#999"; ctx.fill();
-    ctx.strokeStyle = "#555"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#9A81F2"; ctx.fill();
+    ctx.strokeStyle = "#7349AD"; ctx.lineWidth = 1.5; ctx.stroke();
   }
 
   // Amber rectangle with "R" label — resistive load
@@ -139,10 +141,10 @@ export function createPrimitives(ctx) {
     ctx.setLineDash([]);
     ctx.fillStyle = "#fffbeb";
     ctx.fillRect(centerX - 22, centerY - 24, 44, 48);
-    ctx.strokeStyle = "#b45309"; ctx.lineWidth = 2;
+    ctx.strokeStyle = PALETTE.load; ctx.lineWidth = 2;
     ctx.strokeRect(centerX - 22, centerY - 24, 44, 48);
-    drawText("R", centerX, centerY + 5, 13, "#b45309", "center", true);
-    drawText(label, centerX, centerY + 38, 10, "#111", "center", true);
+    drawText("R", centerX, centerY + 5, 13, PALETTE.load, "center", true);
+    drawText(label, centerX, centerY + 38, 10, PALETTE.textPrimary, "center", true);
   }
 
   // Plain white circle with bold label below
@@ -150,14 +152,14 @@ export function createPrimitives(ctx) {
     ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(centerX, centerY, 24, 0, Math.PI * 2);
     ctx.fillStyle = "#fff"; ctx.fill();
-    ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.stroke();
-    drawText(label, centerX, centerY + 38, 10, "#111", "center", true);
+    ctx.strokeStyle = PALETTE.motor; ctx.lineWidth = 2; ctx.stroke();
+    drawText(label, centerX, centerY + 38, 10, PALETTE.textPrimary, "center", true);
   }
 
   // Thick black bus bar
   function drawBusBar(startX, endX, y, thickness = 8) {
     ctx.setLineDash([]);
-    ctx.fillStyle = "#111";
+    ctx.fillStyle = PALETTE.busbar;
     ctx.fillRect(startX, y - thickness / 2, endX - startX, thickness);
   }
 

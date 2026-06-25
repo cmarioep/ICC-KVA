@@ -1,5 +1,6 @@
 import { series } from "./cableUtils";
 import { createPrimitives } from "./diagramPrimitives";
+import { PALETTE } from "./palette";
 
 // Unified multi-board diagram (analisisCargas.tableros.length > 1):
 //   grid → transformer → main feeder → MAIN BUS
@@ -164,24 +165,24 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
   // Right-side technical data
   if (hasGridData) {
-    drawText(`Un: ${grid.kV ?? "--"} kV`, sourceLabelX, gridY + 4, 11, "#222");
-    drawText(`Icc: ${grid.Icc != null ? grid.Icc.toFixed(1) : "--"} kA`, sourceLabelX, gridY + 18, 11, "#222");
-    drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, gridY + 32, 11, "#c00", true);
+    drawText(`Un: ${grid.kV ?? "--"} kV`, sourceLabelX, gridY + 4, 11, PALETTE.textPrimary);
+    drawText(`Icc: ${grid.Icc != null ? grid.Icc.toFixed(1) : "--"} kA`, sourceLabelX, gridY + 18, 11, PALETTE.textPrimary);
+    drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, gridY + 32, 11, PALETTE.faultCurrent, true);
   }
-  drawText(`kVA:  ${transformer.kVA}`,     sourceLabelX, trafoY - 28, 11, "#222");
-  drawText(`Un:  ${transformer.kVsec} kV`, sourceLabelX, trafoY - 14, 11, "#222");
-  drawText(`Z%:  ${transformer.zPct}%`,    sourceLabelX, trafoY,      11, "#222");
-  drawTextWithKVAccSubscript(`:  (${transformer.equipmentKVAcc.toFixed(2)} kVA)`, sourceLabelX, trafoY + 14, 11, "#c00");
+  drawText(`kVA:  ${transformer.kVA}`,     sourceLabelX, trafoY - 28, 11, PALETTE.textPrimary);
+  drawText(`Un:  ${transformer.kVsec} kV`, sourceLabelX, trafoY - 14, 11, PALETTE.textPrimary);
+  drawText(`Z%:  ${transformer.zPct}%`,    sourceLabelX, trafoY,      11, PALETTE.textPrimary);
+  drawTextWithKVAccSubscript(`:  (${transformer.equipmentKVAcc.toFixed(2)} kVA)`, sourceLabelX, trafoY + 14, 11, PALETTE.faultCurrent);
 
   // Generator (optional) — second source landing on the main bus
   if (generator) {
     drawVerticalLine(genX, trafoY - 24, mainBusY);
     ctx.beginPath(); ctx.arc(genX, trafoY, 24, 0, Math.PI * 2);
     ctx.fillStyle = "#fff"; ctx.fill();
-    ctx.strokeStyle = "#1a6e1a"; ctx.lineWidth = 2; ctx.stroke();
-    drawText("G", genX, trafoY + 6, 16, "#1a6e1a", "center", true);
-    drawText(`kVA: ${generator.kVA}`, genX + 30, trafoY - 4, 11, "#222");
-    drawTextWithKVAccSubscript(`: (${generator.kVAccAtSourceOutput.toFixed(2)} kVA)`, genX + 30, trafoY + 12, 11, "#c00");
+    ctx.strokeStyle = PALETTE.motor; ctx.lineWidth = 2; ctx.stroke();
+    drawText("G", genX, trafoY + 6, 16, PALETTE.motor, "center", true);
+    drawText(`kVA: ${generator.kVA}`, genX + 30, trafoY - 4, 11, PALETTE.textPrimary);
+    drawTextWithKVAccSubscript(`: (${generator.kVAccAtSourceOutput.toFixed(2)} kVA)`, genX + 30, trafoY + 12, 11, PALETTE.faultCurrent);
   }
 
   // ── Main bus bar ─────────────────────────────────────────────────────────────
@@ -189,8 +190,8 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const busLeftX  = Math.min(mainColX, tableroCenters[0]) - BUS_OVERHANG;
   const busRightX = Math.max(generator ? genX : mainColX, tableroCenters[tableroCenters.length - 1]) + BUS_OVERHANG;
   drawBusBar(busLeftX, busRightX, mainBusY);
-  drawText("BARRA PRINCIPAL", busLeftX, mainBusY - 12, 11, "#111", "left", true);
-  drawText(`kVAcc: ${mainBusKVAcc.toFixed(1)}  |  Icc: ${mainBusIcc.toFixed(1)} A`, busRightX, mainBusY - 12, 10, "#c00", "right");
+  drawText("BARRA PRINCIPAL", busLeftX, mainBusY - 12, 11, PALETTE.textPrimary, "left", true);
+  drawText(`Icc: ${mainBusIcc.toFixed(1)} A`, busRightX, mainBusY - 12, 10, PALETTE.faultCurrent, "right");
 
   // ── Per-tablero branches ─────────────────────────────────────────────────────
   tableros.forEach((tablero, i) => {
@@ -221,12 +222,12 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
     // Tablero bus bar (spans its own circuits)
     const loadCount   = tablero.loadResults.length;
-    const halfWidth   = Math.max(70, ((loadCount - 1) * LOAD_SPACING) / 2 + 36);
+    const halfWidth   = Math.max(110, ((loadCount - 1) * LOAD_SPACING) / 2 + 70);
     const tBusLeftX   = colX - halfWidth;
     const tBusRightX  = colX + halfWidth;
     drawBusBar(tBusLeftX, tBusRightX, tableroBusY);
-    drawText(tablero.name, tBusLeftX, tableroBusY - 12, 11, "#111", "left", true);
-    drawText(`Icc: ${tablero.symmetricShortCircuitCurrent.toFixed(1)} A`, tBusRightX, tableroBusY - 12, 10, "#c00", "right");
+    drawText(tablero.name, tBusLeftX, tableroBusY - 12, 11, PALETTE.textPrimary, "left", true);
+    drawText(`Icc: ${tablero.symmetricShortCircuitCurrent.toFixed(1)} A`, tBusRightX, tableroBusY - 12, 10, PALETTE.faultCurrent, "right");
 
     // Circuits hanging off the tablero bus
     const firstLoadX = colX - ((loadCount - 1) * LOAD_SPACING) / 2;
@@ -244,17 +245,17 @@ export function drawUnifiedDiagram(canvas, data, results) {
         if (hasCable) labelTexts.push(terminalUpstream.toFixed(2) + " kVA", "(" + load.cableKVAcc.toFixed(2) + " kVA)");
         const textStartX = computeSectionTextStartX(loadX, labelTexts);
 
-        drawText(tablero.upstreamAtBus.toFixed(2) + " kVA", textStartX, circuitFlow1Y - 4, 10, "#111");
+        drawText(tablero.upstreamAtBus.toFixed(2) + " kVA", textStartX, circuitFlow1Y - 4, 10, PALETTE.textPrimary);
         drawRightArrow(loadX - 8, circuitFlow1Y, 40);
         if (hasCable) {
           drawImpedanceBox(loadX, circuitBoxY, load.cableKVAcc.toFixed(2), textStartX);
-          drawText(terminalUpstream.toFixed(2) + " kVA", textStartX, circuitFlow2Y - 4, 10, "#555");
+          drawText(terminalUpstream.toFixed(2) + " kVA", textStartX, circuitFlow2Y - 4, 10, PALETTE.textSecondary);
           drawRightArrow(loadX - 8, circuitFlow2Y, 40);
         }
 
         drawResistiveLoadSymbol(loadX, circuitSymbolY, load.label);
         const iccTerminal = terminalUpstream / (Math.sqrt(3) * loadVoltageKV);
-        drawText(`Icc: ${iccTerminal.toFixed(1)} A`, loadX, circuitSymbolY + 52, 10, "#333", "center");
+        drawText(`Icc: ${iccTerminal.toFixed(1)} A`, loadX, circuitSymbolY + 52, 10, PALETTE.faultCurrent, "center");
       } else {
         // Motor: flow pair (upstream black, motor contribution grey) per level
         const labelTexts = [
@@ -271,8 +272,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
         drawLoadSymbol(loadX, circuitSymbolY, load.label);
         const iccTerminal = (terminalUpstream + load.motorKVAcc) / (Math.sqrt(3) * loadVoltageKV);
-        drawText(`Icc: ${iccTerminal.toFixed(1)} A`, loadX, circuitSymbolY + 52, 10, "#333", "center");
-        drawText(`HP: ${load.hp.toFixed(1)}`, loadX, circuitSymbolY + 66, 10, "#1a6e1a", "center");
+        drawText(`Icc: ${iccTerminal.toFixed(1)} A`, loadX, circuitSymbolY + 52, 10, PALETTE.faultCurrent, "center");
       }
     });
   });
