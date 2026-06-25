@@ -175,8 +175,8 @@ export function drawDiagram(canvas, data, results) {
     if (!isGenerator) {
       if (hasGridData) {
         drawText(`Un: ${data.grid.kV ?? '--'} kV`,                          sourceLabelX, diagramTopY + 4,  11, PALETTE.textPrimary);
-        drawText(`Icc: ${data.grid.Icc != null ? data.grid.Icc.toFixed(1) : '--'} kA`, sourceLabelX, diagramTopY + 18, 11, PALETTE.textPrimary);
-        drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, diagramTopY + 32, 11, PALETTE.faultCurrent, true);
+        drawText(`Icc: ${data.grid.Icc != null ? data.grid.Icc.toFixed(2) : '--'} kA`, sourceLabelX, diagramTopY + 18, 11, PALETTE.textPrimary);
+        drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(2)} kVA`, sourceLabelX, diagramTopY + 32, 11, PALETTE.faultCurrent, true);
       }
       drawText(`kVA:  ${source.kVA}`,     sourceLabelX, transformerY - 28, 11, PALETTE.textPrimary);
       drawText(`Un:  ${source.kVsec} kV`, sourceLabelX, transformerY - 14, 11, PALETTE.textPrimary);
@@ -208,7 +208,7 @@ export function drawDiagram(canvas, data, results) {
 
   // Icc at bus bar — same style/pattern as the unified diagram
   const shortCircuitCurrentAtBus = busKVAcc / (Math.sqrt(3) * busVoltageKV);
-  drawIccLabel(`Icc: ${shortCircuitCurrentAtBus.toFixed(1)} A`, busBarRightX, currentY - 12, 11, PALETTE.faultCurrent, "right");
+  drawIccLabel(`Icc: ${shortCircuitCurrentAtBus.toFixed(2)} A`, busBarRightX, currentY - 12, 11, PALETTE.faultCurrent, "right");
 
   // ── Load branches — drawn once below the common bus bar ─────────────────────
 

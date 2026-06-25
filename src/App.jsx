@@ -232,7 +232,7 @@ function ParameterSummary({ data, result }) {
 
 /* ── RESUMEN UNIFICADO: BARRA PRINCIPAL ──────────────────── */
 function UnifiedMainSummary({ data, result }) {
-  const { gridKVAcc, srcResults, mainBusKVAcc, mainBusIcc, mainAsymmetricFactor } = result;
+  const { gridKVAcc, srcResults, mainBusKVAcc, mainBusUpstreamKVAcc, mainBusDownstreamKVAcc, mainBusIcc, mainAsymmetricFactor } = result;
   const tr = srcResults[0];
 
   return (
@@ -272,8 +272,8 @@ function UnifiedMainSummary({ data, result }) {
         ] : []),
 
         { type: "header", label: "Barra Principal" },
-        { label: "kVAcc aguas arriba", value: `${formatNumber(mainBusKVAcc, 2)} kVA`, color: "blue" },
-        { label: "kVAcc motores", value: `${formatNumber(0, 2)} kVA`, color: "green" },
+        { label: "kVAcc aguas arriba", value: `${formatNumber(mainBusUpstreamKVAcc, 2)} kVA`, color: "blue" },
+        { label: "kVAcc motores", value: `${formatNumber(mainBusDownstreamKVAcc, 2)} kVA`, color: "green" },
         { type: "total", label: "kVAcc en barra", value: `${formatNumber(mainBusKVAcc, 2)} kVA`, color: "amber" },
         { type: "total", label: "Icc simétrica", value: `${formatNumber(mainBusIcc, 2)} A`, color: "blue" },
         { type: "total", label: `Icc asimétrica ×${mainAsymmetricFactor}`, value: `${formatNumber(mainBusIcc * mainAsymmetricFactor, 2)} A`, color: "red" },

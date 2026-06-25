@@ -42,7 +42,7 @@ Everything is computed in **kVAcc (short-circuit power, kVA)**, *not* impedance,
 - **Upstream** (sources/grid through feeders) and **downstream** (motor contributions) sum at the bus: `busKVAcc = upstreamKVAcc + downstreamKVAcc`. Resistive loads contribute 0 to the bus.
 - Asymmetric factor is **1.25** for systems ≤ 600 V, **1.6** above.
 - Motor X''d: **0.17** for ≥ 50 HP, else **0.20**. HP = `loadVA × 0.9 / 746` (FP fixed at 0.9).
-- In the unified (multi-board) model, each board bus sees only its upstream contribution through its own feeder **plus its own motors** — motor contributions do *not* propagate back up to the main bus or across to sibling boards.
+- The unified (multi-board) model is **fully bidirectional**: under fault, short-circuit power flows from every source *and* every motor toward the fault through any available path. The radial network is a star (main bus ↔ source equivalent `S`; main bus ↔ each board bus via feeder `F_i`; board bus ↔ its motors `D_i`), reduced as: main bus `Y_main = S + Σ series(F_i, D_i)`; board *i* `Y_i = D_i + series(F_i, R_i)` where `R_i = Y_main − series(F_i, D_i)` is the rest of the network seen at the main bus excluding board *i*. So board motor contributions **do** propagate up to the main bus and across to sibling boards.
 
 ### Single vs unified mode
 

@@ -303,8 +303,20 @@ function runCalc(data) {
 }
 
 // Two-level network: sources → main bus → per-tablero feeder → tablero bus → circuits.
-// Per the chosen model, each tablero bus only sees its upstream contribution (through
-// the feeders) plus the contribution of its OWN motors.
+//
+// Fully bidirectional kVAcc model: under fault conditions the short-circuit power
+// flows from EVERY source (utility/transformer/generators AND motors) toward the fault
+// through any available path. In kVAcc terms each element is an admittance — series
+// branches combine via series() and parallel injections add. The radial network is a
+// star: the main bus connects to the source equivalent (S) directly and to each board
+// bus through a feeder (F_i); each board bus connects to its own motors (D_i).
+//
+//   main bus fault:  Y_main = S + Σ_i series(F_i, D_i)
+//   board i fault:   Y_i    = D_i + series(F_i, R_i),  R_i = Y_main − series(F_i, D_i)
+//
+// where R_i is the rest of the network seen at the main bus excluding board i's branch
+// (i.e. the sources plus every sibling board's motor contribution). This lets motor
+// contributions propagate up to the main bus and across to sibling boards.
 function runUnifiedCalc(data) {
   const { grid, sources, tableros } = data;
   const hasGridData = grid.kV != null && grid.kV > 0 && grid.Icc != null && grid.Icc > 0;
@@ -314,22 +326,21 @@ function runUnifiedCalc(data) {
 
   const { srcResults, upstreamKVAcc, generatorBusKVAcc } = calcSources(grid, sources, hasGridData, gridKVAcc);
 
-  // Main bus kVAcc: upstream sources + local generators (no propagation from boards).
-  const mainBusUpstreamKVAcc = upstreamKVAcc + generatorBusKVAcc;
-  const mainBusVoltageKV     = data.busVoltageKV ?? sources[0]?.kVsec ?? 0.208;
-  const mainAsymmetricFactor = mainBusVoltageKV < 0.6 ? 1.25 : 1.6;
-  const mainBusIcc           = mainBusUpstreamKVAcc / (Math.sqrt(3) * mainBusVoltageKV);
+  // S: source contribution available at the main bus (sources + local generators).
+  const sourceKVAcc      = upstreamKVAcc + generatorBusKVAcc;
+  const mainBusVoltageKV = data.busVoltageKV ?? sources[0]?.kVsec ?? 0.208;
 
-  const tableroResults = tableros.map(tablero => {
+  // Per-board intermediates: feeder admittance (F_i), own-motor admittance at the board
+  // bus (D_i = downstreamKVAcc) and the contribution this board injects up to the main
+  // bus through its feeder, series(D_i, F_i). A disabled feeder acts as a perfect link
+  // (infinite admittance), so series() leaves the board contribution unchanged.
+  const boards = tableros.map(tablero => {
     const busVoltageKV = tablero.busVoltageKV ?? mainBusVoltageKV;
 
-    // Upstream contribution arriving at this tablero bus through its own feeder.
-    let feederKVAcc = null;
-    let upstreamAtBus = mainBusUpstreamKVAcc;
-    if (tablero.feeder.enabled) {
-      feederKVAcc   = cableKVA(busVoltageKV, getZ(tablero.feeder.type, tablero.feeder.gauge, tablero.feeder.material, tablero.feeder.canal), tablero.feeder.len, tablero.feeder.parallel);
-      upstreamAtBus = series(mainBusUpstreamKVAcc, feederKVAcc);
-    }
+    const feederKVAcc = tablero.feeder.enabled
+      ? cableKVA(busVoltageKV, getZ(tablero.feeder.type, tablero.feeder.gauge, tablero.feeder.material, tablero.feeder.canal), tablero.feeder.len, tablero.feeder.parallel)
+      : null;
+    const feederAdmittance = feederKVAcc ?? Infinity;
 
     let downstreamKVAcc = 0;
     const loadResults = tablero.loads.map(load => {
@@ -337,6 +348,24 @@ function runUnifiedCalc(data) {
       downstreamKVAcc += result.kVAccContributionToBus;
       return result;
     });
+
+    const contribToMain = series(downstreamKVAcc, feederAdmittance);
+    return { tablero, busVoltageKV, feederKVAcc, feederAdmittance, downstreamKVAcc, loadResults, contribToMain };
+  });
+
+  // Main bus fault: sources + every board's motor contribution through its feeder.
+  const mainBusDownstreamKVAcc = boards.reduce((sum, b) => sum + b.contribToMain, 0);
+  const mainBusKVAcc           = sourceKVAcc + mainBusDownstreamKVAcc;
+  const mainAsymmetricFactor   = mainBusVoltageKV < 0.6 ? 1.25 : 1.6;
+  const mainBusIcc             = mainBusKVAcc / (Math.sqrt(3) * mainBusVoltageKV);
+
+  const tableroResults = boards.map(b => {
+    const { tablero, busVoltageKV, feederKVAcc, feederAdmittance, downstreamKVAcc, loadResults, contribToMain } = b;
+
+    // R_i: rest of the network seen at the main bus excluding this board's branch.
+    const restAtMain = mainBusKVAcc - contribToMain;
+    // Upstream contribution arriving at this board bus through its own feeder.
+    const upstreamAtBus = series(feederAdmittance, restAtMain);
 
     const busKVAcc                     = upstreamAtBus + downstreamKVAcc;
     const asymmetricFactor             = busVoltageKV < 0.6 ? 1.25 : 1.6;
@@ -361,8 +390,10 @@ function runUnifiedCalc(data) {
   return {
     gridKVAcc,
     srcResults,
-    upstreamKVAcc: mainBusUpstreamKVAcc,
-    mainBusKVAcc: mainBusUpstreamKVAcc,
+    upstreamKVAcc: mainBusKVAcc,
+    mainBusKVAcc,
+    mainBusUpstreamKVAcc: sourceKVAcc,
+    mainBusDownstreamKVAcc,
     mainBusIcc,
     mainAsymmetricFactor,
     busVoltageKV: mainBusVoltageKV,

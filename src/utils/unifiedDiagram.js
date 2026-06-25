@@ -166,8 +166,8 @@ export function drawUnifiedDiagram(canvas, data, results) {
   // Right-side technical data
   if (hasGridData) {
     drawText(`Un: ${grid.kV ?? "--"} kV`, sourceLabelX, gridY + 4, 11, PALETTE.textPrimary);
-    drawText(`Icc: ${grid.Icc != null ? grid.Icc.toFixed(1) : "--"} kA`, sourceLabelX, gridY + 18, 11, PALETTE.textPrimary);
-    drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(1)} kVA`, sourceLabelX, gridY + 32, 11, PALETTE.faultCurrent, true);
+    drawText(`Icc: ${grid.Icc != null ? grid.Icc.toFixed(2) : "--"} kA`, sourceLabelX, gridY + 18, 11, PALETTE.textPrimary);
+    drawTextWithKVAccSubscript(`: ${gridKVAcc.toFixed(2)} kVA`, sourceLabelX, gridY + 32, 11, PALETTE.faultCurrent, true);
   }
   drawText(`kVA:  ${transformer.kVA}`,     sourceLabelX, trafoY - 28, 11, PALETTE.textPrimary);
   drawText(`Un:  ${transformer.kVsec} kV`, sourceLabelX, trafoY - 14, 11, PALETTE.textPrimary);
@@ -191,7 +191,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
   const busRightX = Math.max(generator ? genX : mainColX, tableroCenters[tableroCenters.length - 1]) + BUS_OVERHANG;
   drawBusBar(busLeftX, busRightX, mainBusY);
   drawText("BARRA PRINCIPAL", busLeftX, mainBusY - 12, 11, PALETTE.textPrimary, "left", true);
-  drawIccLabel(`Icc: ${mainBusIcc.toFixed(1)} A`, busRightX, mainBusY - 12, 11, PALETTE.faultCurrent, "right");
+  drawIccLabel(`Icc: ${mainBusIcc.toFixed(2)} A`, busRightX, mainBusY - 12, 11, PALETTE.faultCurrent, "right");
 
   // ── Per-tablero branches ─────────────────────────────────────────────────────
   tableros.forEach((tablero, i) => {
@@ -206,15 +206,18 @@ export function drawUnifiedDiagram(canvas, data, results) {
     const tableroContribToMain = hasFeeder
       ? series(tablero.downstreamKVAcc, tablero.feederKVAcc)
       : tablero.downstreamKVAcc;
+    // kVAcc pushing down into this board's feeder = rest of the network seen at the main
+    // bus, i.e. the main bus level minus this board's own upward contribution.
+    const restAtMain = mainBusKVAcc - tableroContribToMain;
 
     const feederLabelTexts = [
-      mainBusKVAcc.toFixed(2) + " kVA", tableroContribToMain.toFixed(2) + " kVA",
+      restAtMain.toFixed(2) + " kVA", tableroContribToMain.toFixed(2) + " kVA",
       tablero.upstreamAtBus.toFixed(2) + " kVA", tablero.downstreamKVAcc.toFixed(2) + " kVA",
     ];
     if (hasFeeder) feederLabelTexts.push("(" + tablero.feederKVAcc.toFixed(2) + " kVA)");
     const feederTextStartX = computeSectionTextStartX(colX, feederLabelTexts);
 
-    drawFlowPairLabels(colX, feederFlow1Y, mainBusKVAcc, tableroContribToMain, feederTextStartX);
+    drawFlowPairLabels(colX, feederFlow1Y, restAtMain, tableroContribToMain, feederTextStartX);
     if (hasFeeder) {
       drawImpedanceBox(colX, feederBoxY, tablero.feederKVAcc.toFixed(2), feederTextStartX);
       drawFlowPairLabels(colX, feederFlow2Y, tablero.upstreamAtBus, tablero.downstreamKVAcc, feederTextStartX);
@@ -227,7 +230,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
     const tBusRightX  = colX + halfWidth;
     drawBusBar(tBusLeftX, tBusRightX, tableroBusY);
     drawText(tablero.name, tBusLeftX, tableroBusY - 12, 11, PALETTE.textPrimary, "left", true);
-    drawIccLabel(`Icc: ${tablero.symmetricShortCircuitCurrent.toFixed(1)} A`, tBusRightX, tableroBusY - 12, 11, PALETTE.faultCurrent, "right");
+    drawIccLabel(`Icc: ${tablero.symmetricShortCircuitCurrent.toFixed(2)} A`, tBusRightX, tableroBusY - 12, 11, PALETTE.faultCurrent, "right");
 
     // Circuits hanging off the tablero bus
     const firstLoadX = colX - ((loadCount - 1) * LOAD_SPACING) / 2;
@@ -255,7 +258,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
         drawResistiveLoadSymbol(loadX, circuitSymbolY, load.label);
         const iccTerminal = terminalUpstream / (Math.sqrt(3) * loadVoltageKV);
-        drawIccLabel(`Icc: ${iccTerminal.toFixed(1)} A`, loadX, circuitSymbolY + 52, 11, PALETTE.faultCurrent, "center");
+        drawIccLabel(`Icc: ${iccTerminal.toFixed(2)} A`, loadX, circuitSymbolY + 52, 11, PALETTE.faultCurrent, "center");
       } else {
         // Motor: flow pair (upstream black, motor contribution grey) per level
         const labelTexts = [
@@ -272,7 +275,7 @@ export function drawUnifiedDiagram(canvas, data, results) {
 
         drawLoadSymbol(loadX, circuitSymbolY, load.label);
         const iccTerminal = (terminalUpstream + load.motorKVAcc) / (Math.sqrt(3) * loadVoltageKV);
-        drawIccLabel(`Icc: ${iccTerminal.toFixed(1)} A`, loadX, circuitSymbolY + 52, 11, PALETTE.faultCurrent, "center");
+        drawIccLabel(`Icc: ${iccTerminal.toFixed(2)} A`, loadX, circuitSymbolY + 52, 11, PALETTE.faultCurrent, "center");
       }
     });
   });
