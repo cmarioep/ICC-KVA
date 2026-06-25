@@ -8,6 +8,10 @@ import { PALETTE } from "./palette";
 const MAIN_LINE_COLOR    = PALETTE.feeder;
 const DEFAULT_LINE_WIDTH = 2;
 
+// Lightning-bolt icon authored as an SVG path (viewBox 0 0 24 24), rendered via Path2D.
+// Swap this string for any other SVG icon's `d` attribute to change the symbol.
+const BOLT_PATH = new Path2D("M12 0 L3.6 13.92 H10.08 L5.28 24 L20.4 9.12 H13.2 L17.28 0 Z");
+
 export function createPrimitives(ctx) {
   function drawLine(x1, y1, x2, y2, lineWidth, color) {
     ctx.setLineDash([]);
@@ -37,6 +41,31 @@ export function createPrimitives(ctx) {
     const subscriptWidth = ctx.measureText("cc").width;
     ctx.font = `${boldPrefix}${fontSize}px Arial,sans-serif`;
     ctx.fillText(remainingText, x + kVATextWidth + subscriptWidth, y);
+  }
+
+  // Small filled lightning-bolt icon. (x, y) = top-left corner of its bounding box.
+  // The icon is an SVG path (BOLT_PATH, viewBox 24×24) scaled into width×height.
+  function drawLightningIcon(x, y, width = 8, height = 12, color = PALETTE.faultCurrent) {
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.translate(x, y);
+    ctx.scale(width / 24, height / 24);
+    ctx.fillStyle = color;
+    ctx.fill(BOLT_PATH);
+    ctx.restore();
+  }
+
+  // Icc value preceded by a lightning bolt to its left. Mirrors drawText's alignment
+  // (the bolt sits just left of the text's left edge for any textAlign).
+  function drawIccLabel(text, x, y, fontSize = 10, color = PALETTE.faultCurrent, textAlign = "left") {
+    ctx.font = `bold ${fontSize}px Arial,sans-serif`;
+    const textWidth = ctx.measureText(text).width;
+    const textLeftX = textAlign === "right" ? x - textWidth
+                    : textAlign === "center" ? x - textWidth / 2
+                    : x;
+    const iconW = fontSize * 1.1, iconH = fontSize * 1.65, gap = 3;
+    drawLightningIcon(textLeftX - iconW - gap, y - iconH + 1, iconW, iconH, color);
+    drawText(text, x, y, fontSize, color, textAlign, true);
   }
 
   // Red right-pointing arrow; tipX = arrowhead tip
@@ -167,6 +196,6 @@ export function createPrimitives(ctx) {
     drawLine, drawVerticalLine, drawText, drawTextWithKVAccSubscript,
     drawRightArrow, drawLeftArrow, computeSectionTextStartX, drawFlowPairLabels,
     drawImpedanceBox, drawTransformer, drawGridSymbol, drawResistiveLoadSymbol,
-    drawLoadSymbol, drawBusBar,
+    drawLoadSymbol, drawBusBar, drawLightningIcon, drawIccLabel,
   };
 }
