@@ -43,12 +43,12 @@ function BusKpis({ busKVAcc, symmetricIcc, asymmetricFactor }) {
         <div className="kpi__label">kVAcc en barra</div>
       </div>
       <div className="kpi kpi--blue">
-        <div className="kpi__value">{formatNumber(symmetricIcc, 2)}</div>
-        <div className="kpi__label">Icc simétrica [A]</div>
+        <div className="kpi__value">{formatNumber(symmetricIcc / 1000, 2)}</div>
+        <div className="kpi__label">Icc simétrica [kA]</div>
       </div>
       <div className="kpi kpi--red">
-        <div className="kpi__value">{formatNumber(symmetricIcc * asymmetricFactor, 2)}</div>
-        <div className="kpi__label">Icc asimétrica ×{asymmetricFactor} [A]</div>
+        <div className="kpi__value">{formatNumber(symmetricIcc * asymmetricFactor / 1000, 2)}</div>
+        <div className="kpi__label">Icc asimétrica ×{asymmetricFactor} [kA]</div>
       </div>
     </div>
   );
@@ -275,8 +275,8 @@ function UnifiedMainSummary({ data, result }) {
         { label: "kVAcc aguas arriba", value: `${formatNumber(mainBusUpstreamKVAcc, 2)} kVA`, color: "blue" },
         { label: "kVAcc motores", value: `${formatNumber(mainBusDownstreamKVAcc, 2)} kVA`, color: "green" },
         { type: "total", label: "kVAcc en barra", value: `${formatNumber(mainBusKVAcc, 2)} kVA`, color: "amber" },
-        { type: "total", label: "Icc simétrica", value: `${formatNumber(mainBusIcc, 2)} A`, color: "blue" },
-        { type: "total", label: `Icc asimétrica ×${mainAsymmetricFactor}`, value: `${formatNumber(mainBusIcc * mainAsymmetricFactor, 2)} A`, color: "red" },
+        { type: "total", label: "Icc simétrica", value: `${formatNumber(mainBusIcc / 1000, 2)} kA`, color: "blue" },
+        { type: "total", label: `Icc asimétrica ×${mainAsymmetricFactor}`, value: `${formatNumber(mainBusIcc * mainAsymmetricFactor / 1000, 2)} kA`, color: "red" },
       ]} />
     </Card>
   );
@@ -308,8 +308,8 @@ function TableroSummary({ tablero }) {
         { label: "kVAcc aguas arriba", value: `${formatNumber(upstreamAtBus, 2)} kVA`, color: "blue" },
         { label: "kVAcc motores", value: `${formatNumber(downstreamKVAcc, 2)} kVA`, color: "green" },
         { type: "total", label: "kVAcc en barra", value: `${formatNumber(busKVAcc, 2)} kVA`, color: "amber" },
-        { type: "total", label: "Icc simétrica", value: `${formatNumber(symmetricShortCircuitCurrent, 2)} A`, color: "blue" },
-        { type: "total", label: `Icc asimétrica ×${asymmetricFactor}`, value: `${formatNumber(asymmetricShortCircuitCurrent, 2)} A`, color: "red" },
+        { type: "total", label: "Icc simétrica", value: `${formatNumber(symmetricShortCircuitCurrent / 1000, 2)} kA`, color: "blue" },
+        { type: "total", label: `Icc asimétrica ×${asymmetricFactor}`, value: `${formatNumber(asymmetricShortCircuitCurrent / 1000, 2)} kA`, color: "red" },
 
         ...loadResults.flatMap(load => {
           const vKV = load.voltageKV ?? busVoltageKV;
@@ -325,8 +325,8 @@ function TableroSummary({ tablero }) {
               { label: "Potencia (HP)", value: load.hp.toFixed(2), color: "green" },
               { label: "kVAcc motor", value: load.motorKVAcc.toFixed(2), color: "green" },
             ] : []),
-            { label: "Icc terminal (A)", value: `${formatNumber(terminalIcc, 2)} A`, bold: true, color: "amber" },
-            { label: `Icc asimétrica ×${asymmetricFactor} (A)`, value: `${formatNumber(terminalIcc * asymmetricFactor, 2)} A`, bold: true, color: "red" },
+            { label: "Icc terminal (kA)", value: `${formatNumber(terminalIcc / 1000, 2)} kA`, bold: true, color: "amber" },
+            { label: `Icc asimétrica ×${asymmetricFactor} (kA)`, value: `${formatNumber(terminalIcc * asymmetricFactor / 1000, 2)} kA`, bold: true, color: "red" },
           ];
         }),
       ]} />
@@ -475,8 +475,8 @@ export default function App() {
               { label: "kVAcc aguas arriba", value: `${formatNumber(upstreamKVAcc, 2)} kVA`, color: "blue" },
               { label: "kVAcc motores", value: `${formatNumber(downstreamKVAcc, 2)} kVA`, color: "green" },
               { type: "total", label: "kVAcc en barra", value: `${formatNumber(busKVAcc, 2)} kVA`, color: "amber" },
-              { type: "total", label: "Icc simétrica", value: `${formatNumber(symmetricShortCircuitCurrent, 2)} A`, color: "blue" },
-              { type: "total", label: `Icc asimétrica ×${asymmetricFactor}`, value: `${formatNumber(asymmetricShortCircuitCurrent, 2)} A`, color: "red" },
+              { type: "total", label: "Icc simétrica", value: `${formatNumber(symmetricShortCircuitCurrent / 1000, 2)} kA`, color: "blue" },
+              { type: "total", label: `Icc asimétrica ×${asymmetricFactor}`, value: `${formatNumber(asymmetricShortCircuitCurrent / 1000, 2)} kA`, color: "red" },
 
               ...loadResults.flatMap(load => {
                 const vKV = load.voltageKV ?? busVoltageKV;
@@ -492,8 +492,8 @@ export default function App() {
                     { label: "Potencia (HP)", value: load.hp.toFixed(2), color: "green" },
                     { label: "kVAcc motor", value: load.motorKVAcc.toFixed(2), color: "green" },
                   ] : []),
-                  { label: "Icc terminal (A)", value: `${formatNumber(terminalIcc, 2)} A`, bold: true, color: "amber" },
-                  { label: `Icc asimétrica ×${asymmetricFactor} (A)`, value: `${formatNumber(terminalIcc * asymmetricFactor, 2)} A`, bold: true, color: "red" },
+                  { label: "Icc terminal (kA)", value: `${formatNumber(terminalIcc / 1000, 2)} kA`, bold: true, color: "amber" },
+                  { label: `Icc asimétrica ×${asymmetricFactor} (kA)`, value: `${formatNumber(terminalIcc * asymmetricFactor / 1000, 2)} kA`, bold: true, color: "red" },
                 ];
               }),
             ]} />

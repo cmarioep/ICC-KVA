@@ -71,7 +71,7 @@ export function drawDiagram(canvas, data, results) {
       flowPairBeforeSymbolY = lb + 11 + SEGMENT_LENGTH + 4;
     }
     const symY   = flowPairBeforeSymbolY + 12 + SEGMENT_LENGTH + 24;
-    const bottom = symY + (load.loadType === "inducción" ? 86 : 66);
+    const bottom = symY + 66; // room for the Iasc label below the symbol
     maxLoadBottomY = Math.max(maxLoadBottomY, bottom);
   });
 
@@ -208,7 +208,7 @@ export function drawDiagram(canvas, data, results) {
 
   // Icc at bus bar — same style/pattern as the unified diagram
   const shortCircuitCurrentAtBus = busKVAcc / (Math.sqrt(3) * busVoltageKV);
-  drawIccLabel(`Iasc: ${(shortCircuitCurrentAtBus * asymmetricFactor).toFixed(2)} A`, busBarRightX, currentY - 12, 11, PALETTE.faultCurrent, "right");
+  drawIccLabel(`Iasc: ${(shortCircuitCurrentAtBus * asymmetricFactor / 1000).toFixed(2)} kA`, busBarRightX, currentY - 12, 11, PALETTE.faultCurrent, "right");
 
   // ── Load branches — drawn once below the common bus bar ─────────────────────
 
@@ -254,7 +254,7 @@ export function drawDiagram(canvas, data, results) {
         drawRightArrow(loadCenterX - 8, flowPair2Y, 40);
       }
 
-      drawIccLabel(`Iasc: ${(iccAtTerminal * asymmetricFactor).toFixed(2)} A`, loadCenterX, symbolCenterY + 52, 11, PALETTE.faultCurrent, "center");
+      drawIccLabel(`Iasc: ${(iccAtTerminal * asymmetricFactor / 1000).toFixed(2)} kA`, loadCenterX, symbolCenterY + 52, 11, PALETTE.faultCurrent, "center");
       return;
     }
 
@@ -300,11 +300,10 @@ export function drawDiagram(canvas, data, results) {
       upstreamKVAatTerminal = series(upstreamKVAatBus, load.cableKVAcc);
       drawFlowPairLabels(loadCenterX, loadFlowPair2Y, upstreamKVAatTerminal, load.motorKVAcc, loadTextStartX);
       const shortCircuitCurrentAtLoad = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
-      drawIccLabel(`Iasc: ${(shortCircuitCurrentAtLoad * asymmetricFactor).toFixed(2)}`, loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
+      drawIccLabel(`Iasc: ${(shortCircuitCurrentAtLoad * asymmetricFactor / 1000).toFixed(2)} kA`, loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
     } else {
-      const iccAtLoad  = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
-      const iascAtLoad = iccAtLoad * asymmetricFactor;
-      drawIccLabel(`Iasc: ${iascAtLoad.toFixed(2)}`, loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
+      const iccAtLoad = (upstreamKVAatTerminal + load.motorKVAcc) / (Math.sqrt(3) * busVoltageKV);
+      drawIccLabel(`Iasc: ${(iccAtLoad * asymmetricFactor / 1000).toFixed(2)} kA`, loadCenterX, loadCircleCenterY + 52, 11, PALETTE.faultCurrent, "center");
     }
   });
 
