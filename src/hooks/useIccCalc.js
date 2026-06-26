@@ -5,7 +5,7 @@ import { drawUnifiedDiagram } from "../utils/unifiedDiagram";
 
 const DEFAULT_JSON = JSON.stringify({
   networkOperator: {
-    tesion: 13.2,
+    tension: 13.2,
     Icc: 10,
   },
   primaryServiceFeeder: { type: "MT15", material: "Cobre", conduit: "PVC", awg: "1/0", long: 50 },
@@ -134,7 +134,7 @@ function buildSources(input, busVoltageKV, mainFeeder) {
   const sources = [{
     id: 1, type: "transformer", label: "TR",
     kVA:   input.mainSource.kva,
-    kVpri: input.networkOperator.tesion,
+    kVpri: input.networkOperator.tension,
     kVsec: busVoltageKV,
     zPct:  input.mainSource.zPct ?? Z_PCT_BY_KVA[String(input.mainSource.kva)] ?? 6,
     xdpp:  0.17,
@@ -166,7 +166,7 @@ function transformJsonInput(input, tablero) {
   const busVoltageKV = busVoltageV / 1000;
 
   const grid = {
-    kV:    input.networkOperator.tesion,
+    kV:    input.networkOperator.tension,
     Icc:   input.networkOperator.Icc,
     kVAcc: 0,
   };
@@ -185,7 +185,7 @@ function transformUnifiedInput(input) {
   const mainBusVoltageKV = (tableros[0]?.config?.systemVoltage ?? 208) / 1000;
 
   const grid = {
-    kV:    input.networkOperator.tesion,
+    kV:    input.networkOperator.tension,
     Icc:   input.networkOperator.Icc,
     kVAcc: 0,
   };
